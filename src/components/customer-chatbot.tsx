@@ -402,9 +402,7 @@ export function CustomerChatbot() {
                                 <Send size={18} />
                             </button>
                         </div>
-                        <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', marginBottom: 0, fontStyle: 'italic' }}>
-                            O chatbot está desabilitado neste idioma
-                        </p>
+
                     </div>
                 </>
             )}
