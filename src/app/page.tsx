@@ -9,7 +9,7 @@ import { ProductCard } from "@/components/product-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
-import { CustomerChatbot } from "@/components/customer-chatbot";
+
 
 interface Product {
   id: string;
@@ -220,8 +220,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Customer Chatbot */}
-      <CustomerChatbot />
     </div>
   );
 }

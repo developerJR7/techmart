@@ -6,6 +6,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { CustomerChatbot } from "@/components/customer-chatbot";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,6 +56,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <CustomerChatbot />
             <Toaster />
           </QueryProvider>
         </ThemeProvider>
