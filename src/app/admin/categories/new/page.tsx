@@ -30,7 +30,7 @@ export default function NewCategoryPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CategoryForm>({
+  } = useForm({
     resolver: zodResolver(categorySchema),
   });
 
