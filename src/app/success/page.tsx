@@ -9,7 +9,10 @@ import { CheckCircle } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import Link from "next/link";
 
-export default function SuccessPage() {
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get("session_id");
@@ -45,6 +48,18 @@ export default function SuccessPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Skeleton className="h-12 w-12 rounded-full" />
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
 

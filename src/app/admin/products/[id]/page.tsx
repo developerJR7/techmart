@@ -39,7 +39,7 @@ export default function EditProductPage() {
     handleSubmit,
     formState: { errors },
     setValue,
-  } = useForm<ProductForm>({
+  } = useForm({
     resolver: zodResolver(productSchema),
   });
 

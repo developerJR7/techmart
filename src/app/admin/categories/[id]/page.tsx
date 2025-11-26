@@ -34,7 +34,7 @@ export default function EditCategoryPage() {
     handleSubmit,
     formState: { errors },
     setValue,
-  } = useForm<CategoryForm>({
+  } = useForm({
     resolver: zodResolver(categorySchema),
   });
 
