@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
+import { adminService } from "@/services/admin.service";
 import api from "@/lib/api";
 
 interface User {
@@ -33,8 +34,8 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get("/users");
-      setUsers(response.data || []);
+      const response = await adminService.getUsers();
+      setUsers(response.data);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
     } finally {
@@ -73,20 +74,18 @@ export default function AdminUsersPage() {
                       </p>
                       <div className="flex gap-4 mt-2">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            user.role === "ADMIN"
-                              ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          }`}
+                          className={`px-2 py-1 rounded text-xs font-medium ${user.role === "ADMIN"
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            }`}
                         >
                           {user.role}
                         </span>
                         <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            user.isActive
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                          }`}
+                          className={`px-2 py-1 rounded text-xs font-medium ${user.isActive
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            }`}
                         >
                           {user.isActive ? "Ativo" : "Inativo"}
                         </span>

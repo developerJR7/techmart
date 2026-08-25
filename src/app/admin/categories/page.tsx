@@ -8,16 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import { categoriesService } from "@/services/categories.service";
 import api from "@/lib/api";
 import Link from "next/link";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  isActive: boolean;
-}
+import { Category } from "@/services/categories.service";
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -35,8 +30,8 @@ export default function AdminCategoriesPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get("/categories");
-      setCategories(response.data || []);
+      const data = await categoriesService.getCategories();
+      setCategories(data);
     } catch (error) {
       console.error("Erro ao carregar categorias:", error);
     } finally {
@@ -47,7 +42,7 @@ export default function AdminCategoriesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover esta categoria?")) return;
     try {
-      await api.delete(`/categories/${id}`);
+      await categoriesService.deleteCategory(id);
       fetchCategories();
     } catch (error) {
       alert("Erro ao remover categoria");

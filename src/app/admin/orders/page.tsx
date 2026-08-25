@@ -7,29 +7,14 @@ import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
-import api from "@/lib/api";
-
-interface Order {
-  id: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  user: {
-    name: string;
-    email: string;
-  };
-  orderItems: Array<{
-    product: {
-      name: string;
-    };
-    quantity: number;
-    price: number;
-  }>;
-}
+import { adminService } from "@/services/admin.service";
+import { useToast } from "@/hooks/use-toast";
+import { Order } from "@/types/api.types";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
   const { isAdmin, isAuthenticated } = useAuthStore();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,10 +28,15 @@ export default function AdminOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get("/orders/all");
+      const response = await adminService.getAllOrders({ limit: 100 });
       setOrders(response.data || []);
     } catch (error) {
       console.error("Erro ao carregar pedidos:", error);
+      toast({
+        variant: "error",
+        title: "Erro ao carregar pedidos",
+        description: "Não foi possível carregar a lista de pedidos."
+      });
     } finally {
       setLoading(false);
     }
@@ -54,10 +44,20 @@ export default function AdminOrdersPage() {
 
   const updateStatus = async (orderId: string, status: string) => {
     try {
-      await api.patch(`/orders/${orderId}/status`, { status });
+      await adminService.updateOrderStatus(orderId, status as any);
+      toast({
+        title: "Status atualizado!",
+        description: "O status do pedido foi atualizado com sucesso.",
+        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
+      });
       fetchOrders();
     } catch (error) {
-      alert("Erro ao atualizar status");
+      console.error("Erro ao atualizar status:", error);
+      toast({
+        variant: "error",
+        title: "Erro ao atualizar status",
+        description: "Não foi possível atualizar o status do pedido."
+      });
     }
   };
 

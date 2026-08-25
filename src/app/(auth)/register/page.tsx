@@ -4,9 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
+import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/api-error-handler";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const register = useAuthStore((state) => state.register);
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,11 +32,28 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Call your register API here
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      router.push("/login");
+      await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      });
+
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Bem-vindo ao TechMart.",
+        variant: "default",
+        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
+      });
+
+      router.push("/");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erro ao criar conta");
+      const message = getErrorMessage(err);
+      setError(message);
+      toast({
+        variant: "error",
+        title: "Erro ao criar conta",
+        description: message,
+      });
     } finally {
       setLoading(false);
     }

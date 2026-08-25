@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Minimize2, Phone, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { chatbotService } from '@/services/chatbot.service';
+import { usePathname } from 'next/navigation';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -12,8 +14,10 @@ interface Message {
 }
 
 export function CustomerChatbot() {
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    const [conversationId, setConversationId] = useState<string | undefined>();
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
@@ -33,6 +37,11 @@ export function CustomerChatbot() {
         scrollToBottom();
     }, [messages]);
 
+    // Não mostrar no admin
+    if (pathname?.startsWith('/admin')) {
+        return null;
+    }
+
     const handleQuickAction = async (action: string, label: string) => {
         // Adicionar mensagem do usuário
         const userMessage: Message = {
@@ -44,17 +53,15 @@ export function CustomerChatbot() {
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/ai/customer-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ quickAction: action }),
-            });
+            const response = await chatbotService.sendMessage(label, conversationId);
 
-            const data = await response.json();
+            if (!conversationId) {
+                setConversationId(response.conversationId);
+            }
 
             const assistantMessage: Message = {
                 role: 'assistant',
-                content: data.response || data.fallback || 'Desculpe, não consegui processar sua solicitação.',
+                content: response.response || 'Desculpe, não consegui processar sua solicitação.',
                 timestamp: new Date(),
             };
             setMessages(prev => [...prev, assistantMessage]);
@@ -85,17 +92,15 @@ export function CustomerChatbot() {
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/ai/customer-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: input }),
-            });
+            const response = await chatbotService.sendMessage(input, conversationId);
 
-            const data = await response.json();
+            if (!conversationId) {
+                setConversationId(response.conversationId);
+            }
 
             const assistantMessage: Message = {
                 role: 'assistant',
-                content: data.response || data.fallback || 'Desculpe, não consegui processar sua mensagem.',
+                content: response.response || 'Desculpe, não consegui processar sua mensagem.',
                 timestamp: new Date(),
             };
             setMessages(prev => [...prev, assistantMessage]);

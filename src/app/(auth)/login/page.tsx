@@ -4,10 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
+import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/api-error-handler";
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,9 +23,21 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo de volta ao TechMart.",
+        variant: "default", // or just omit for default
+        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
+      });
       router.push("/");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Erro ao fazer login");
+      const message = getErrorMessage(err);
+      setError(message);
+      toast({
+        variant: "error",
+        title: "Erro ao entrar",
+        description: message,
+      });
     } finally {
       setLoading(false);
     }

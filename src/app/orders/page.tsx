@@ -7,24 +7,10 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/auth-store";
-import { Package, Clock, CheckCircle, XCircle, Truck } from "lucide-react";
-import api from "@/lib/api";
-
-interface Order {
-    id: string;
-    total: number;
-    status: string;
-    createdAt: string;
-    items: {
-        id: string;
-        quantity: number;
-        price: number;
-        product: {
-            name: string;
-            image?: string;
-        };
-    }[];
-}
+import { Package, Clock, CheckCircle, XCircle, Truck, CreditCard, Barcode, QrCode } from "lucide-react";
+import { ordersService } from "@/services/orders.service";
+import { Order } from "@/types/api.types";
+import Link from "next/link";
 
 const statusConfig = {
     PENDING: { label: "Pendente", icon: Clock, color: "text-yellow-600" },
@@ -32,6 +18,12 @@ const statusConfig = {
     SHIPPED: { label: "Enviado", icon: Truck, color: "text-purple-600" },
     DELIVERED: { label: "Entregue", icon: CheckCircle, color: "text-green-600" },
     CANCELLED: { label: "Cancelado", icon: XCircle, color: "text-red-600" },
+};
+
+const paymentMethodConfig = {
+    CREDIT_CARD: { label: "Cartão de Crédito", icon: CreditCard },
+    BOLETO: { label: "Boleto", icon: Barcode },
+    PIX: { label: "PIX", icon: QrCode },
 };
 
 export default function OrdersPage() {
@@ -50,8 +42,20 @@ export default function OrdersPage() {
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get("/orders");
-            setOrders(response.data);
+            const response = await ordersService.getOrders();
+            // Handle both paginated and array responses if necessary, but service returns PaginatedResponse usually
+            // However, the service definition says it returns data directly if I recall correctly?
+            // Let's check service again. It returns `data` from api.get.
+            // api.get<PaginatedResponse<Order>> returns { data: PaginatedResponse<Order> }
+            // So response is PaginatedResponse<Order>.
+            // So orders should be response.data.
+            if ('data' in response && Array.isArray(response.data)) {
+                setOrders(response.data);
+            } else if (Array.isArray(response)) {
+                setOrders(response);
+            } else {
+                setOrders([]);
+            }
         } catch (error) {
             console.error("Erro ao carregar pedidos:", error);
         } finally {
@@ -117,53 +121,69 @@ export default function OrdersPage() {
                                 const statusLabel = statusConfig[order.status as keyof typeof statusConfig]?.label || order.status;
                                 const statusColor = statusConfig[order.status as keyof typeof statusConfig]?.color || "text-gray-600";
 
+                                const PaymentIcon = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.icon || CreditCard;
+                                const paymentLabel = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.label || order.paymentMethod;
+
                                 return (
-                                    <Card key={order.id}>
-                                        <CardHeader>
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                                <div>
-                                                    <CardTitle className="text-lg">
-                                                        Pedido #{order.id.slice(0, 8)}
-                                                    </CardTitle>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                                        {formatDate(order.createdAt)}
-                                                    </p>
+                                    <Link href={`/orders/${order.id}`} key={order.id} className="block hover:no-underline">
+                                        <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                                            <CardHeader>
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                                    <div>
+                                                        <CardTitle className="text-lg">
+                                                            Pedido #{order.id.slice(0, 8)}
+                                                        </CardTitle>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                            {formatDate(order.createdAt)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-col sm:items-end gap-2">
+                                                        <div className={`flex items-center gap-2 ${statusColor}`}>
+                                                            <StatusIcon className="h-5 w-5" />
+                                                            <span className="font-semibold">{statusLabel}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                            <PaymentIcon className="h-4 w-4" />
+                                                            <span>{paymentLabel}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className={`flex items-center gap-2 ${statusColor}`}>
-                                                    <StatusIcon className="h-5 w-5" />
-                                                    <span className="font-semibold">{statusLabel}</span>
-                                                </div>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-4">
-                                                {/* Itens do Pedido */}
-                                                <div className="space-y-3">
-                                                    {order.items.map((item) => (
-                                                        <div key={item.id} className="flex items-center gap-4 pb-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                                                            <div className="flex-1">
-                                                                <p className="font-medium">{item.product.name}</p>
-                                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                                    Quantidade: {item.quantity} × {formatPrice(item.price)}
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="space-y-4">
+                                                    {/* Itens do Pedido (Preview - max 2 items) */}
+                                                    <div className="space-y-3">
+                                                        {order.items.slice(0, 2).map((item) => (
+                                                            <div key={item.id} className="flex items-center gap-4 pb-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                                                                <div className="flex-1">
+                                                                    <p className="font-medium">{item.product.name}</p>
+                                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                                        Quantidade: {item.quantity}
+                                                                    </p>
+                                                                </div>
+                                                                <p className="font-semibold">
+                                                                    {formatPrice(item.price * item.quantity)}
                                                                 </p>
                                                             </div>
-                                                            <p className="font-semibold">
-                                                                {formatPrice(item.price * item.quantity)}
+                                                        ))}
+                                                        {order.items.length > 2 && (
+                                                            <p className="text-sm text-gray-500 text-center pt-2">
+                                                                e mais {order.items.length - 2} itens...
                                                             </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                        )}
+                                                    </div>
 
-                                                {/* Total */}
-                                                <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                                                    <span className="text-lg font-semibold">Total</span>
-                                                    <span className="text-2xl font-bold text-[#1E90FF]">
-                                                        {formatPrice(order.total)}
-                                                    </span>
+                                                    {/* Total */}
+                                                    <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                                                        <span className="text-lg font-semibold">Total</span>
+                                                        <span className="text-2xl font-bold text-[#1E90FF]">
+                                                            {formatPrice(order.total)}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
                                 );
                             })}
                         </div>

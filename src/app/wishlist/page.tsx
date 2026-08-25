@@ -1,19 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Trash2, ShoppingBag, Heart } from "lucide-react";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { useCartStore } from "@/store/cart-store";
+import { useAuthStore } from "@/store/auth-store";
+import { useToast } from "@/hooks/use-toast";
 
 export default function WishlistPage() {
     const router = useRouter();
-    const { items, removeItem } = useWishlistStore();
+    const { items, removeItem, syncWithBackend } = useWishlistStore();
     const { addItem } = useCartStore();
+    const { isAuthenticated } = useAuthStore();
+    const { toast } = useToast();
 
-    const handleAddToCart = (item: any) => {
-        addItem({
+    useEffect(() => {
+        if (isAuthenticated()) {
+            syncWithBackend();
+        }
+    }, [isAuthenticated, syncWithBackend]);
+
+    const handleAddToCart = async (item: any) => {
+        await addItem({
             id: item.id,
             name: item.name,
             price: item.price,
@@ -21,8 +32,13 @@ export default function WishlistPage() {
             image: item.image,
             slug: item.slug
         });
-        removeItem(item.id);
-        alert('Produto adicionado ao carrinho!');
+        await removeItem(item.id);
+
+        toast({
+            title: "Adicionado ao carrinho",
+            description: "Produto movido para o carrinho com sucesso.",
+            style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
+        });
     };
 
     if (items.length === 0) {

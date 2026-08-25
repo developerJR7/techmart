@@ -33,30 +33,6 @@ SEU PAPEL:
    - Sugestões de novos produtos
    - Otimização de preços
    - Melhores horários para promoções
-   - Categorias promissoras
-
-5. TENDÊNCIAS DE MERCADO
-   - Produtos em alta
-   - Sazonalidade
-   - Comportamento do consumidor
-   - Oportunidades emergentes
-
-TOM DE VOZ:
-- Profissional e direto
-- Baseado em dados
-- Proativo com sugestões
-- Use números e métricas
-- Formate respostas com bullet points
-
-FORMATO DE RESPOSTA:
-1. Resumo executivo (1-2 linhas)
-2. Análise detalhada com dados
-3. Insights principais (3-5 pontos)
-4. Recomendações acionáveis
-5. Próximos passos sugeridos
-
-QUANDO ANALISAR DADOS:
-- Sempre cite números específicos
 - Compare com períodos anteriores quando possível
 - Identifique tendências (crescimento/queda)
 - Destaque outliers (muito bom ou muito ruim)
@@ -64,18 +40,18 @@ QUANDO ANALISAR DADOS:
 `;
 
 export interface AnalyticsData {
-    totalRevenue: number;
-    totalOrders: number;
-    totalProducts: number;
-    totalCustomers: number;
-    salesByMonth?: Array<{ month: string; revenue: number; orders: number }>;
-    topProducts?: Array<{ name: string; sold: number; revenue: number }>;
-    lowStock?: Array<{ name: string; stock: number }>;
-    stagnantProducts?: Array<{ name: string; lastSale: string }>;
+   totalRevenue: number;
+   totalOrders: number;
+   totalProducts: number;
+   totalCustomers: number;
+   salesByMonth?: Array<{ month: string; revenue: number; orders: number }>;
+   topProducts?: Array<{ name: string; sold: number; revenue: number }>;
+   lowStock?: Array<{ name: string; stock: number }>;
+   stagnantProducts?: Array<{ name: string; lastSale: string }>;
 }
 
 export function formatAnalyticsForAI(data: AnalyticsData): string {
-    return `
+   return `
 MÉTRICAS ATUAIS:
 - Receita Total: R$ ${data.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
 - Total de Pedidos: ${data.totalOrders}
@@ -106,11 +82,11 @@ ${data.stagnantProducts.map(p => `- ${p.name} (última venda: ${p.lastSale})`).j
 }
 
 export const COMMON_ADMIN_QUERIES = {
-    LOW_STOCK: 'Quais produtos estão com estoque baixo e precisam de reposição urgente?',
-    SALES_ANALYSIS: 'Analise as vendas do último mês e identifique tendências.',
-    TOP_PERFORMERS: 'Quais são os produtos mais lucrativos e por quê?',
-    GROWTH_OPPORTUNITIES: 'Quais oportunidades de crescimento você identifica?',
-    PRICING_OPTIMIZATION: 'Como posso otimizar os preços para aumentar a margem?',
-    CUSTOMER_INSIGHTS: 'Qual o perfil dos meus melhores clientes?',
-    MARKET_TRENDS: 'Quais são as tendências atuais no mercado de e-commerce?',
+   LOW_STOCK: 'Quais produtos estão com estoque baixo e precisam de reposição urgente?',
+   SALES_ANALYSIS: 'Analise as vendas do último mês e identifique tendências.',
+   TOP_PERFORMERS: 'Quais são os produtos mais lucrativos e por quê?',
+   GROWTH_OPPORTUNITIES: 'Quais oportunidades de crescimento você identifica?',
+   PRICING_OPTIMIZATION: 'Como posso otimizar os preços para aumentar a margem?',
+   CUSTOMER_INSIGHTS: 'Qual o perfil dos meus melhores clientes?',
+   MARKET_TRENDS: 'Quais são as tendências atuais no mercado de e-commerce?',
 };

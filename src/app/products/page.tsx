@@ -1,25 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
-import api from "@/lib/api";
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  image?: string;
-}
-
-import { Suspense } from "react";
+import { productsService } from "@/services/products.service";
+import { Product } from "@/types/api.types";
+import { useToast } from "@/hooks/use-toast";
 
 function ProductsContent() {
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,34 +29,52 @@ function ProductsContent() {
 
   useEffect(() => {
     async function fetchProducts() {
+      setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (searchQuery) params.append("search", searchQuery);
-        if (selectedCategory) params.append("category", selectedCategory);
-        params.append("page", currentPage.toString());
-        params.append("limit", "20");
+        const response = await productsService.getProducts({
+          search: searchQuery,
+          category: selectedCategory,
+          page: currentPage,
+          limit: 20
+        });
 
-        const response = await api.get(`/products?${params.toString()}`);
-        setProducts(response.data.products || []);
-        setTotalPages(response.data.totalPages || 1);
+        // Service now returns { data: Product[], meta: ... }
+        // But types might say it returns PaginatedResponse directly.
+        // Let's handle both cases to be safe or just match what we changed in service.
+        // We changed service to return { data, meta } object.
+
+        // If response has data property which is an array
+        if (response && Array.isArray(response.data)) {
+          setProducts(response.data);
+          if (response.meta) {
+            setTotalPages(Math.ceil(response.meta.total / response.meta.limit));
+          }
+        } else if (Array.isArray(response)) {
+          // Fallback if service returns array directly
+          setProducts(response);
+        } else {
+          setProducts([]);
+        }
       } catch (error) {
         console.error("Erro ao carregar produtos:", error);
-        // Dados mock se falhar
-        const mockProducts: Product[] = Array.from({ length: 20 }, (_, i) => ({
-          id: `mock-${i + 1}`,
-          name: `Produto de Tecnologia ${i + 1}`,
-          slug: `produto-${i + 1}`,
-          price: 299.99 + (i * 50),
-          image: `https://picsum.photos/seed/${i + 1}/400/400`,
-        }));
-        setProducts(mockProducts);
-        setTotalPages(1);
+        toast({
+          variant: "error",
+          title: "Erro ao carregar produtos",
+          description: "Não foi possível buscar os produtos. Tente novamente."
+        });
+        setProducts([]);
       } finally {
         setLoading(false);
       }
     }
-    fetchProducts();
-  }, [searchQuery, selectedCategory, currentPage]);
+
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      fetchProducts();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategory, currentPage, toast]);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -116,7 +127,7 @@ function ProductsContent() {
                 id={product.id}
                 name={product.name}
                 price={product.price}
-                image={product.image}
+                image={product.images?.[0]}
                 slug={product.slug}
                 discount={index % 3 === 0 ? 15 : 0}
               />

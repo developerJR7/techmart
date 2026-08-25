@@ -8,21 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
 import { Plus, Edit, Trash2 } from "lucide-react";
-import api from "@/lib/api";
+import { productsService } from "@/services/products.service";
+import { adminService } from "@/services/admin.service";
+import { useToast } from "@/hooks/use-toast";
+import { Product } from "@/types/api.types";
 import Link from "next/link";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  isActive: boolean;
-  isFeatured: boolean;
-}
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const { isAdmin, isAuthenticated } = useAuthStore();
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +31,15 @@ export default function AdminProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await api.get("/products?limit=100");
-      setProducts(response.data.products || []);
+      const response = await productsService.getProducts({ limit: 100 });
+      setProducts(response.data || []);
     } catch (error) {
       console.error("Erro ao carregar produtos:", error);
+      toast({
+        variant: "error",
+        title: "Erro ao carregar produtos",
+        description: "Não foi possível carregar a lista de produtos."
+      });
     } finally {
       setLoading(false);
     }
@@ -48,10 +48,20 @@ export default function AdminProductsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este produto?")) return;
     try {
-      await api.delete(`/products/${id}`);
+      await adminService.deleteProduct(id);
+      toast({
+        title: "Produto removido!",
+        description: "O produto foi removido com sucesso.",
+        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
+      });
       fetchProducts();
     } catch (error) {
-      alert("Erro ao remover produto");
+      console.error("Erro ao remover produto:", error);
+      toast({
+        variant: "error",
+        title: "Erro ao remover produto",
+        description: "Não foi possível remover o produto."
+      });
     }
   };
 
@@ -94,7 +104,7 @@ export default function AdminProductsPage() {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })} • Estoque: {product.stock} •{" "}
-                        {product.isFeatured && "⭐ Destaque"}
+                        {product.featured && "⭐ Destaque"}
                       </p>
                     </div>
                     <div className="flex gap-2">

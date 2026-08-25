@@ -8,17 +8,8 @@ import Autoplay from 'embla-carousel-autoplay';
 import { ProductCard } from "@/components/product-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import api from "@/lib/api";
-
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  image?: string;
-  isFeatured: boolean;
-}
+import { productsService } from "@/services/products.service";
+import { Product } from "@/types/api.types";
 
 const carouselImages = [
   {
@@ -50,19 +41,12 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await api.get("/products?limit=30");
-        setProducts(response.data.products || []);
+        const featuredProducts = await productsService.getFeaturedProducts();
+        setProducts(featuredProducts || []);
       } catch (error) {
         console.error("Erro ao carregar produtos:", error);
-        const mockProducts: Product[] = Array.from({ length: 30 }, (_, i) => ({
-          id: `mock-${i + 1}`,
-          name: `Produto ${i + 1}`,
-          slug: `produto-${i + 1}`,
-          price: 99.99 + (i * 30),
-          image: `https://images.unsplash.com/photo-${1500000000000 + i}?w=400&h=400&fit=crop`,
-          isFeatured: i < 10,
-        }));
-        setProducts(mockProducts);
+        // Fallback to empty or error state, but avoiding mock data if possible to test integration
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -211,7 +195,7 @@ export default function Home() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
-                  image={product.image}
+                  image={product.images?.[0]}
                   slug={product.slug}
                 />
               ))}

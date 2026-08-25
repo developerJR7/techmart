@@ -10,7 +10,8 @@ import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
-import api from "@/lib/api";
+import { productsService } from "@/services/products.service";
+import { categoriesService } from "@/services/categories.service";
 
 const productSchema = z.object({
   name: z.string().min(2, "Nome deve ter no mínimo 2 caracteres"),
@@ -48,8 +49,8 @@ export default function NewProductPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get("/categories");
-      setCategories(response.data || []);
+      const data = await categoriesService.getCategories();
+      setCategories(data || []);
     } catch (error) {
       console.error("Erro ao carregar categorias:", error);
     }
@@ -59,7 +60,14 @@ export default function NewProductPage() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/products", data);
+      const productData: any = {
+        ...data,
+        categoryId: data.categoryId,
+      };
+      // Remove fields that might not match the DTO exactly if needed, 
+      // but here we map the form data to the DTO.
+
+      await productsService.createProduct(productData);
       router.push("/admin/products");
     } catch (err: any) {
       setError(err.response?.data?.message || "Erro ao criar produto");

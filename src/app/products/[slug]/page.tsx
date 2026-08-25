@@ -11,29 +11,22 @@ import { ShoppingCart, Minus, Plus, Heart, Share2, Star, ChevronRight, Truck, Sh
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { motion } from "framer-motion";
-import api from "@/lib/api";
+import { productsService } from "@/services/products.service";
+import { recommendationsService } from "@/services/recommendations.service";
+import { Product } from "@/types/api.types";
 import { ProductCard } from "@/components/product-card";
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  image?: string;
-  images?: string[];
-  slug: string;
-  category: {
-    id: string;
-    name: string;
-  };
-}
+import { ReviewList } from "@/components/reviews/review-list";
+import { ReviewForm } from "@/components/reviews/review-form";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { toast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [frequentlyBought, setFrequentlyBought] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCartStore();
@@ -42,18 +35,39 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const response = await api.get(`/products/slug/${slug}`);
-        setProduct(response.data);
+        const productData = await productsService.getProductBySlug(slug);
+        setProduct(productData);
 
-        // Fetch related products (mock or real)
+        // Fetch AI-powered similar products
         try {
-          const relatedRes = await api.get(`/products?limit=4`);
-          setRelatedProducts(relatedRes.data.products.filter((p: Product) => p.id !== response.data.id).slice(0, 4));
+          const similar = await recommendationsService.getSimilarProducts(productData.id, 4);
+          setSimilarProducts(similar.map(s => s as unknown as Product));
+        } catch (err) {
+          console.error("Erro ao carregar produtos similares", err);
+        }
+
+        // Fetch frequently bought together
+        try {
+          const bought = await recommendationsService.getFrequentlyBoughtTogether(productData.id);
+          setFrequentlyBought(bought);
+        } catch (err) {
+          console.error("Erro ao carregar produtos comprados juntos", err);
+        }
+
+        // Fallback to related products if AI fails
+        try {
+          const related = await productsService.getRelatedProducts(productData.id);
+          setRelatedProducts(related.slice(0, 4));
         } catch (err) {
           console.error("Erro ao carregar produtos relacionados", err);
         }
       } catch (error) {
         console.error("Erro ao carregar produto:", error);
+        toast({
+          variant: "error",
+          title: "Erro ao carregar produto",
+          description: "Não foi possível carregar os detalhes do produto."
+        });
       } finally {
         setLoading(false);
       }
@@ -61,17 +75,23 @@ export default function ProductPage() {
     if (slug) {
       fetchProduct();
     }
-  }, [slug]);
+  }, [slug, toast]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (product) {
-      addItem({
+      await addItem({
         id: product.id,
         name: product.name,
         price: Number(product.price),
-        image: product.image,
+        image: product.images?.[0],
         slug: product.slug,
         quantity: quantity
+      });
+
+      toast({
+        title: "Adicionado ao carrinho",
+        description: `${quantity}x ${product.name} adicionado com sucesso.`,
+        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
       });
     }
   };
@@ -80,13 +100,21 @@ export default function ProductPage() {
     if (product) {
       if (isInWishlist(product.id)) {
         removeFromWishlist(product.id);
+        toast({
+          title: "Removido da lista de desejos",
+          description: "Produto removido da sua lista."
+        });
       } else {
         addToWishlist({
           id: product.id,
           name: product.name,
           price: Number(product.price),
-          image: product.image,
+          image: product.images?.[0],
           slug: product.slug
+        });
+        toast({
+          title: "Adicionado à lista de desejos",
+          description: "Produto salvo na sua lista."
         });
       }
     }
@@ -142,9 +170,9 @@ export default function ProductPage() {
             animate={{ opacity: 1, x: 0 }}
             className="relative aspect-square bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm"
           >
-            {product.image ? (
+            {product.images?.[0] ? (
               <Image
-                src={product.image}
+                src={product.images[0]}
                 alt={product.name}
                 fill
                 className="object-contain p-8 hover:scale-105 transition-transform duration-500"
@@ -250,25 +278,38 @@ export default function ProductPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <RotateCcw className="h-4 w-4 text-blue-600" />
-                  <span>7 dias para troca</span>
+                  <span>Troca em 30 dias</span>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
 
+        {/* Reviews Section */}
+        <div className="mt-16 mb-16">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Avaliações dos Clientes</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <ReviewList productId={product.id} />
+            </div>
+            <div>
+              <ReviewForm productId={product.id} onSuccess={() => window.location.reload()} />
+            </div>
+          </div>
+        </div>
+
         {/* Related Products */}
         {relatedProducts.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-16">
-            <h2 className="text-2xl font-bold mb-8 text-gray-900 dark:text-white">Produtos Relacionados</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Produtos Relacionados</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((related) => (
                 <ProductCard
                   key={related.id}
                   id={related.id}
                   name={related.name}
                   price={related.price}
-                  image={related.image}
+                  image={related.images?.[0]}
                   slug={related.slug}
                 />
               ))}
