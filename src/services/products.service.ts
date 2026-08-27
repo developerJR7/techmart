@@ -2,45 +2,65 @@ import api from '@/lib/api';
 import { Product, PaginatedResponse, CreateProductDto } from '@/types/api.types';
 
 export interface ProductFilters {
-    category?: string;
+    categoryId?: string;
     minPrice?: number;
     maxPrice?: number;
     search?: string;
     page?: number;
     limit?: number;
     featured?: boolean;
-    sort?: 'price_asc' | 'price_desc' | 'newest' | 'rating';
+}
+
+// Query keys do React Query pro domínio de produtos — mantidos junto do
+// serviço porque espelham exatamente os parâmetros que ele recebe.
+export const productKeys = {
+    all: ['products'] as const,
+    lists: () => [...productKeys.all, 'list'] as const,
+    list: (filters: ProductFilters) => [...productKeys.lists(), filters] as const,
+    detail: (slug: string) => [...productKeys.all, 'detail', slug] as const,
+};
+
+// price/averageRating chegam como string (Decimal do Prisma serializado via
+// JSON) — normaliza pra number aqui, na borda de serviço, pra o resto do app
+// poder confiar em Product.price/averageRating como number de verdade.
+// averageRating vira null se vier ausente/inválido (nunca NaN): um `rating`
+// não-null é o sinal que o ProductCard usa pra decidir se desenha estrelas.
+function normalizeProduct(raw: Product): Product {
+    const rating = Number(raw.averageRating);
+    return {
+        ...raw,
+        price: Number(raw.price),
+        averageRating: raw.averageRating != null && Number.isFinite(rating) ? rating : null,
+    };
 }
 
 export const productsService = {
-    async getProducts(filters: ProductFilters = {}) {
-        const { data } = await api.get<PaginatedResponse<Product>>('/products', { params: filters });
-        // Backend returns { data: [...], meta: ... }
-        // The component expects { data: Product[], meta: ... } structure now
+    async getProducts(filters: ProductFilters = {}, signal?: AbortSignal) {
+        const { data } = await api.get<PaginatedResponse<Product>>('/products', { params: filters, signal });
         return {
-            data: data.data,
-            meta: data.meta
+            data: data.data.map(normalizeProduct),
+            meta: data.meta,
         };
     },
 
-    async getProductBySlug(slug: string) {
-        const { data } = await api.get<Product>(`/products/slug/${slug}`);
-        return data;
+    async getProductBySlug(slug: string, signal?: AbortSignal) {
+        const { data } = await api.get<Product>(`/products/slug/${slug}`, { signal });
+        return normalizeProduct(data);
     },
 
     async getProductById(id: string) {
-        const { data } = await api.get<Product>(`/products/id/${id}`);
-        return data;
+        const { data } = await api.get<Product>(`/products/${id}`);
+        return normalizeProduct(data);
     },
 
     async getRelatedProducts(productId: string) {
         const { data } = await api.get<Product[]>(`/products/${productId}/related`);
-        return data;
+        return data.map(normalizeProduct);
     },
 
     async getFeaturedProducts() {
         const { data } = await api.get<Product[]>('/products/featured');
-        return data;
+        return data.map(normalizeProduct);
     },
 
     // Admin

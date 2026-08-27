@@ -1,10 +1,11 @@
 import api from '@/lib/api';
+import { UserRole } from '@/types/api.types';
 
 export interface UserProfile {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role: UserRole;
     createdAt: string;
 }
 

@@ -2,15 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Search, ShoppingCart, Menu, Heart, User } from "lucide-react";
+import { Search, ShoppingCart, Menu, Heart, X } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
+import { cn } from "@/lib/utils";
+
+const categories = [
+  { href: "/products", label: "Ofertas do dia" },
+  { href: "/products?category=electronics", label: "Eletrônicos" },
+  { href: "/products?category=fashion", label: "Moda" },
+  { href: "/products?category=home", label: "Casa" },
+];
 
 export function Navbar() {
-  const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const cartItems = useCartStore((state) => state.items);
   const wishlistItems = useWishlistStore((state) => state.items);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,240 +34,149 @@ export function Navbar() {
 
   return (
     <>
-      <nav style={{ backgroundColor: '#0A0A0A', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 8px rgba(127, 90, 240, 0.3)' }}>
-        {/* Main Header */}
-        <div style={{ backgroundColor: '#0A0A0A', padding: '10px 0' }}>
-          <div style={{ maxWidth: '1500px', margin: '0 auto', padding: '0 15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+      <nav className="sticky top-0 z-50 bg-secondary shadow-[0_1px_0_0_hsl(var(--border))]">
+        <div className="mx-auto flex max-w-[1500px] items-center gap-4 px-4 py-3">
+          <Link
+            href="/"
+            className="shrink-0 font-display text-xl font-bold tracking-tight text-primary-foreground"
+          >
+            Tech<span className="text-primary">Mart</span>
+          </Link>
 
-            {/* Logo */}
-            <Link href="/" style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#7F5AF0',
-              textDecoration: 'none',
-              padding: '8px 10px',
-              whiteSpace: 'nowrap'
-            }}>
-              TechMart
+          <form onSubmit={handleSearch} className="hidden max-w-2xl flex-1 md:flex">
+            <div className="flex h-10 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10 focus-within:ring-2 focus-within:ring-primary">
+              <input
+                type="text"
+                placeholder="Buscar produtos, marcas e mais"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent px-4 text-sm text-white placeholder:text-white/50 outline-none"
+              />
+              <button
+                type="submit"
+                className="flex w-11 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+                aria-label="Buscar"
+              >
+                <Search size={18} />
+              </button>
+            </div>
+          </form>
+
+          <div className="ml-auto flex items-center gap-1 text-white">
+            <Link
+              href={user ? "/profile" : "/login"}
+              className="hidden flex-col rounded-lg px-3 py-1.5 text-left leading-tight transition-colors hover:bg-white/10 sm:flex"
+            >
+              <span className="text-[11px] text-white/60">
+                Olá, {user ? user.name?.split(" ")[0] : "faça login"}
+              </span>
+              <span className="text-sm font-semibold">Conta</span>
             </Link>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: '900px' }}>
-              <div style={{ display: 'flex', height: '40px' }}>
-                <input
-                  type="text"
-                  placeholder="Pesquisar"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '0 15px',
-                    border: '1px solid #333',
-                    borderRadius: '4px 0 0 4px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: '#1a1a1a',
-                    color: '#fff'
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    width: '45px',
-                    backgroundColor: '#7F5AF0',
-                    border: 'none',
-                    borderRadius: '0 4px 4px 0',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Search size={20} color="#fff" />
-                </button>
-              </div>
-            </form>
+            <Link
+              href="/wishlist"
+              className="relative rounded-lg p-2.5 transition-colors hover:bg-white/10"
+              aria-label="Lista de desejos"
+            >
+              <Heart size={20} />
+              {wishlistCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-amber-foreground">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
 
-            {/* Right Icons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              {/* User */}
-              <Link href={user ? "/profile" : "/login"} style={{
-                color: '#fff',
-                textDecoration: 'none',
-                fontSize: '12px',
-                padding: '8px 10px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start'
-              }}>
-                <span style={{ fontSize: '12px' }}>Olá, {user ? user.name?.split(' ')[0] : 'Faça login'}</span>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Conta</span>
-              </Link>
-
-              {/* Wishlist */}
-              <Link href="/wishlist" style={{
-                color: '#fff',
-                textDecoration: 'none',
-                position: 'relative',
-                padding: '8px 10px'
-              }}>
-                <Heart size={24} />
-                {wishlistCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '0',
-                    right: '0',
-                    backgroundColor: '#7F5AF0',
-                    color: '#fff',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    padding: '2px 6px',
-                    borderRadius: '10px'
-                  }}>
-                    {wishlistCount}
+            <Link
+              href="/cart"
+              className="relative flex items-center gap-2 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/10"
+            >
+              <span className="relative">
+                <ShoppingCart size={22} />
+                {cartCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-amber-foreground">
+                    {cartCount}
                   </span>
                 )}
-              </Link>
-
-              {/* Cart */}
-              <Link href="/cart" style={{
-                color: '#fff',
-                textDecoration: 'none',
-                position: 'relative',
-                padding: '8px 10px',
-                display: 'flex',
-                alignItems: 'flex-end',
-                gap: '5px'
-              }}>
-                <div style={{ position: 'relative' }}>
-                  <ShoppingCart size={32} />
-                  {cartCount > 0 && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '-5px',
-                      right: '-5px',
-                      backgroundColor: '#7F5AF0',
-                      color: '#fff',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      padding: '2px 7px',
-                      borderRadius: '10px'
-                    }}>
-                      {cartCount}
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Carrinho</span>
-              </Link>
-            </div>
+              </span>
+              <span className="hidden text-sm font-semibold sm:inline">Carrinho</span>
+            </Link>
           </div>
         </div>
 
-        {/* Category Bar */}
-        <div style={{ backgroundColor: '#1a1a1a', padding: '8px 0', borderTop: '1px solid #333' }}>
-          <div style={{ maxWidth: '1500px', margin: '0 auto', padding: '0 15px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div className="border-t border-white/10 bg-black/20">
+          <div className="mx-auto flex max-w-[1500px] items-center gap-1 px-4 py-2 text-sm text-white/90">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                padding: '8px 10px'
-              }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors hover:bg-white/10"
             >
-              <Menu size={20} />
+              <Menu size={16} />
               Todos
             </button>
 
-            <div style={{ display: 'flex', gap: '15px', fontSize: '14px' }}>
-              <Link href="/products" style={{ color: '#fff', textDecoration: 'none', padding: '8px 10px' }}>
-                Ofertas do dia
-              </Link>
-              <Link href="/products?category=electronics" style={{ color: '#fff', textDecoration: 'none', padding: '8px 10px' }}>
-                Eletrônicos
-              </Link>
-              <Link href="/products?category=fashion" style={{ color: '#fff', textDecoration: 'none', padding: '8px 10px' }}>
-                Moda
-              </Link>
-              <Link href="/products?category=home" style={{ color: '#fff', textDecoration: 'none', padding: '8px 10px' }}>
-                Casa
-              </Link>
-              {user?.role === 'ADMIN' && (
-                <Link href="/admin" style={{ color: '#7F5AF0', textDecoration: 'none', padding: '8px 10px', fontWeight: 'bold' }}>
-                  📊 Admin
+            <div className="hidden items-center gap-1 md:flex">
+              {categories.map((c) => (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  className="rounded-lg px-3 py-1.5 transition-colors hover:bg-white/10"
+                >
+                  {c.label}
                 </Link>
-              )}
+              ))}
             </div>
+
+            {user?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="ml-auto rounded-lg px-3 py-1.5 font-semibold text-primary transition-colors hover:bg-white/10"
+              >
+                Painel Admin
+              </Link>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <>
           <div
             onClick={() => setMobileMenuOpen(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              zIndex: 999
-            }}
+            className="fixed inset-0 z-[999] bg-black/70"
           />
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '300px',
-              height: '100vh',
-              backgroundColor: '#1a1a1a',
-              zIndex: 1000,
-              overflowY: 'auto',
-              padding: '20px',
-              borderRight: '2px solid #7F5AF0'
-            }}
-          >
+          <div className="fixed inset-y-0 left-0 z-[1000] w-72 overflow-y-auto border-r border-primary/40 bg-secondary p-5">
             <button
               onClick={() => setMobileMenuOpen(false)}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: '#fff',
-                fontSize: '24px',
-                cursor: 'pointer'
-              }}
+              className="absolute right-4 top-4 text-white/70 hover:text-white"
+              aria-label="Fechar menu"
             >
-              ✕
+              <X size={22} />
             </button>
 
-            <h3 style={{ color: '#7F5AF0', fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>Categorias</h3>
+            <h3 className="mb-5 font-display text-lg font-semibold text-primary">
+              Categorias
+            </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Link href="/products" onClick={() => setMobileMenuOpen(false)} style={{ color: '#fff', textDecoration: 'none', padding: '10px', borderBottom: '1px solid #333' }}>
+            <div className="flex flex-col">
+              <Link
+                href="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "border-b border-white/10 py-3 text-sm text-white/90",
+                  "hover:text-primary",
+                )}
+              >
                 Todos os Produtos
               </Link>
-              <Link href="/products?category=electronics" onClick={() => setMobileMenuOpen(false)} style={{ color: '#fff', textDecoration: 'none', padding: '10px', borderBottom: '1px solid #333' }}>
-                Eletrônicos
-              </Link>
-              <Link href="/products?category=fashion" onClick={() => setMobileMenuOpen(false)} style={{ color: '#fff', textDecoration: 'none', padding: '10px', borderBottom: '1px solid #333' }}>
-                Moda
-              </Link>
-              <Link href="/products?category=home" onClick={() => setMobileMenuOpen(false)} style={{ color: '#fff', textDecoration: 'none', padding: '10px', borderBottom: '1px solid #333' }}>
-                Casa
-              </Link>
+              {categories.slice(1).map((c) => (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="border-b border-white/10 py-3 text-sm text-white/90 hover:text-primary"
+                >
+                  {c.label}
+                </Link>
+              ))}
             </div>
           </div>
         </>

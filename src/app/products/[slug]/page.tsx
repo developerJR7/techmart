@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,71 +12,76 @@ import { ShoppingCart, Minus, Plus, Heart, Share2, Star, ChevronRight, Truck, Sh
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { motion } from "framer-motion";
-import { productsService } from "@/services/products.service";
-import { recommendationsService } from "@/services/recommendations.service";
+import { productsService, productKeys } from "@/services/products.service";
+import { recommendationsService, FrequentlyBoughtTogether } from "@/services/recommendations.service";
 import { Product } from "@/types/api.types";
 import { ProductCard } from "@/components/product-card";
 import { ReviewList } from "@/components/reviews/review-list";
 import { ReviewForm } from "@/components/reviews/review-form";
 import { useToast } from "@/hooks/use-toast";
 
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { toast } = useToast();
-  const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
-  const [frequentlyBought, setFrequentlyBought] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [frequentlyBought, setFrequentlyBought] = useState<FrequentlyBoughtTogether | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [now] = useState(() => Date.now());
   const { addItem } = useCartStore();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
 
+  const {
+    data: product,
+    isLoading: loading,
+    isError: hasProductError,
+  } = useQuery({
+    queryKey: productKeys.detail(slug),
+    queryFn: ({ signal }) => productsService.getProductBySlug(slug, signal),
+    enabled: !!slug,
+  });
+
   useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const productData = await productsService.getProductBySlug(slug);
-        setProduct(productData);
-
-        // Fetch AI-powered similar products
-        try {
-          const similar = await recommendationsService.getSimilarProducts(productData.id, 4);
-          setSimilarProducts(similar.map(s => s as unknown as Product));
-        } catch (err) {
-          console.error("Erro ao carregar produtos similares", err);
-        }
-
-        // Fetch frequently bought together
-        try {
-          const bought = await recommendationsService.getFrequentlyBoughtTogether(productData.id);
-          setFrequentlyBought(bought);
-        } catch (err) {
-          console.error("Erro ao carregar produtos comprados juntos", err);
-        }
-
-        // Fallback to related products if AI fails
-        try {
-          const related = await productsService.getRelatedProducts(productData.id);
-          setRelatedProducts(related.slice(0, 4));
-        } catch (err) {
-          console.error("Erro ao carregar produtos relacionados", err);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar produto:", error);
-        toast({
-          variant: "error",
-          title: "Erro ao carregar produto",
-          description: "Não foi possível carregar os detalhes do produto."
-        });
-      } finally {
-        setLoading(false);
-      }
+    if (hasProductError) {
+      toast({
+        variant: "error",
+        title: "Erro ao carregar produto",
+        description: "Não foi possível carregar os detalhes do produto."
+      });
     }
-    if (slug) {
-      fetchProduct();
-    }
-  }, [slug, toast]);
+  }, [hasProductError, toast]);
+
+  // Recomendações são secundárias ao produto em si — buscadas à parte pra
+  // uma falha aqui nunca impedir a página de mostrar o produto principal.
+  // Depende só do id (não do objeto `product` inteiro): o useQuery devolve
+  // uma referência nova a cada refetch em background mesmo com o mesmo id,
+  // o que reexecutaria essas 3 chamadas à toa a cada revalidação.
+  const productId = product?.id;
+  useEffect(() => {
+    if (!productId) return;
+
+    recommendationsService
+      .getSimilarProducts(productId, 4)
+      .then((similar) => setSimilarProducts(similar.map((s) => s as unknown as Product)))
+      .catch((err) => console.error("Erro ao carregar produtos similares", err));
+
+    recommendationsService
+      .getFrequentlyBoughtTogether(productId)
+      .then(setFrequentlyBought)
+      .catch((err) => console.error("Erro ao carregar produtos comprados juntos", err));
+
+    // Fallback to related products if AI fails
+    productsService
+      .getRelatedProducts(productId)
+      .then((related) => setRelatedProducts(related.slice(0, 4)))
+      .catch((err) => console.error("Erro ao carregar produtos relacionados", err));
+  }, [productId]);
 
   const handleAddToCart = async () => {
     if (product) {
@@ -150,6 +156,11 @@ export default function ProductPage() {
   }
 
   const inWishlist = isInWishlist(product.id);
+  // "Novo" é real: só aparece pra produtos cadastrados nos últimos 30 dias,
+  // calculado a partir do createdAt de verdade (antes era um badge fixo em
+  // todo produto, sem relação com nenhum dado). `now` fica travado no
+  // instante da montagem (Date.now() direto no corpo do render é impuro).
+  const isNew = now - new Date(product.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
@@ -183,11 +194,13 @@ export default function ProductPage() {
                 Sem imagem
               </div>
             )}
-            <div className="absolute top-4 left-4">
-              <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-sm">
-                Novo
-              </Badge>
-            </div>
+            {isNew && (
+              <div className="absolute top-4 left-4">
+                <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-sm">
+                  Novo
+                </Badge>
+              </div>
+            )}
           </motion.div>
 
           {/* Product Info */}
@@ -200,25 +213,25 @@ export default function ProductPage() {
               <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                 {product.category.name}
               </Badge>
-              <div className="flex items-center text-yellow-400 text-sm">
-                <Star className="h-4 w-4 fill-current" />
-                <span className="ml-1 text-gray-600 dark:text-gray-400 font-medium">4.8 (120 avaliações)</span>
-              </div>
+              {product.averageRating != null && (
+                <div className="flex items-center text-yellow-400 text-sm">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="ml-1 text-gray-600 dark:text-gray-400 font-medium">
+                    {product.averageRating.toFixed(1)} ({product.reviewCount} avaliações)
+                  </span>
+                </div>
+              )}
             </div>
 
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
               {product.name}
             </h1>
 
+            {/* Sem originalPrice/desconto real no contrato do Product — mostra só o
+                preço de verdade em vez de forjar um "de/por" e um "20% OFF" fixos. */}
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.price)}
-              </span>
-              <span className="text-lg text-gray-500 line-through">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.price * 1.2)}
-              </span>
-              <span className="text-green-600 font-medium text-sm bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                20% OFF
+                {currencyFormatter.format(product.price)}
               </span>
             </div>
 
@@ -270,7 +283,10 @@ export default function ProductPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-blue-600" />
-                  <span>Frete Grátis</span>
+                  {/* Mesma regra de frete grátis do carrinho/checkout (subtotal > R$200),
+                      aplicada à quantidade selecionada aqui — não considera outros itens
+                      que já possam estar no carrinho, então é uma estimativa. */}
+                  <span>{product.price * quantity > 200 ? "Frete Grátis" : "Frete calculado no carrinho"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-blue-600" />
@@ -311,6 +327,8 @@ export default function ProductPage() {
                   price={related.price}
                   image={related.images?.[0]}
                   slug={related.slug}
+                  rating={related.averageRating}
+                  reviewCount={related.reviewCount}
                 />
               ))}
             </div>

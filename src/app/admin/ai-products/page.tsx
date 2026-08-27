@@ -54,7 +54,7 @@ export default function AIProductsPage() {
                 description: `${generatedProducts.length} produtos criados pela IA.`,
                 style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
             });
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
             toast({
                 title: "Erro ao gerar produtos",
@@ -103,7 +103,7 @@ export default function AIProductsPage() {
                         categoryId: '1', // TODO: Map category name to actual category ID
                         images: product.imageUrl ? [product.imageUrl] : [],
                         stock: 10,
-                        featured: false,
+                        isFeatured: false,
                     });
                     successCount++;
                 } catch (err) {
@@ -126,10 +126,10 @@ export default function AIProductsPage() {
                 throw new Error("Falha ao salvar todos os produtos selecionados.");
             }
 
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: "Erro ao salvar produtos",
-                description: error.message || "Ocorreu um erro ao salvar os produtos.",
+                description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar os produtos.",
                 variant: "error",
             });
         } finally {

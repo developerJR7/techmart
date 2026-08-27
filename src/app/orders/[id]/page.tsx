@@ -173,7 +173,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                                     <div className="space-y-6">
                                         <div className="space-y-4">
                                             <h3 className="font-semibold text-lg">Itens do Pedido</h3>
-                                            {order.items.map((item) => (
+                                            {order.orderItems.map((item) => (
                                                 <div key={item.id} className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0">
                                                     {/* Imagem do produto se disponível na API */}
                                                     {/* <div className="h-16 w-16 bg-gray-100 rounded-md flex items-center justify-center">
@@ -205,11 +205,17 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                                 <CardContent className="space-y-4">
                                     <div className="flex justify-between text-gray-600">
                                         <span>Subtotal</span>
-                                        <span>{formatPrice(order.total)}</span>
+                                        <span>{formatPrice(order.subtotal)}</span>
                                     </div>
+                                    {order.discount > 0 && (
+                                        <div className="flex justify-between text-gray-600">
+                                            <span>Desconto</span>
+                                            <span>-{formatPrice(order.discount)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-gray-600">
                                         <span>Frete</span>
-                                        <span>Grátis</span>
+                                        <span>{order.shippingCost > 0 ? formatPrice(order.shippingCost) : "Grátis"}</span>
                                     </div>
                                     <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                         <span className="font-semibold text-lg">Total</span>

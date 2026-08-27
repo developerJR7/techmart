@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DollarSign, ShoppingCart, Package, Users, TrendingUp } from "lucide-react";
 import { adminService } from "@/services/admin.service";
 import Link from "next/link";
 
-
+// Shape real de GET /admin/analytics/dashboard (admin-analytics.controller.ts).
+// Não existe agregação mensal de vendas no backend ainda, por isso não há
+// campo tipo `salesByMonth` aqui — o gráfico "Vendas por Mês" foi removido
+// em vez de inventar os dados.
 interface AnalyticsData {
   totalRevenue: number;
   totalOrders: number;
+  totalUsers: number;
   totalProducts: number;
-  totalCustomers: number;
-  salesByMonth: Array<{ month: string; revenue: number; orders: number }>;
-  topProducts: Array<{ name: string; sold: number; revenue: number }>;
+  topProducts: Array<{ id: string; name: string; totalSold: number }>;
 }
 
 export default function AdminDashboard() {
@@ -23,40 +24,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchAnalytics() {
       try {
-        // Fetch real analytics data from backend
         const dashboardData = await adminService.getDashboardMetrics();
         setAnalytics(dashboardData);
       } catch (error) {
         console.error('Erro ao carregar analytics:', error);
-        // Fallback to mock data if API fails
-        const mockData: AnalyticsData = {
-          totalRevenue: 45230.50,
-          totalOrders: 156,
-          totalProducts: 48,
-          totalCustomers: 89,
-          salesByMonth: [
-            { month: 'Jan', revenue: 3200, orders: 12 },
-            { month: 'Fev', revenue: 4100, orders: 18 },
-            { month: 'Mar', revenue: 3800, orders: 15 },
-            { month: 'Abr', revenue: 5200, orders: 22 },
-            { month: 'Mai', revenue: 4900, orders: 19 },
-            { month: 'Jun', revenue: 6100, orders: 25 },
-            { month: 'Jul', revenue: 5800, orders: 21 },
-            { month: 'Ago', revenue: 4500, orders: 16 },
-            { month: 'Set', revenue: 5900, orders: 24 },
-            { month: 'Out', revenue: 6800, orders: 28 },
-            { month: 'Nov', revenue: 7200, orders: 31 },
-            { month: 'Dez', revenue: 8100, orders: 35 },
-          ],
-          topProducts: [
-            { name: 'iPhone 15 Pro', sold: 45, revenue: 67500 },
-            { name: 'Samsung Galaxy S24', sold: 38, revenue: 45600 },
-            { name: 'MacBook Pro M3', sold: 22, revenue: 52800 },
-            { name: 'AirPods Pro', sold: 67, revenue: 16750 },
-            { name: 'PlayStation 5', sold: 31, revenue: 15500 },
-          ],
-        };
-        setAnalytics(mockData);
       } finally {
         setLoading(false);
       }
@@ -100,9 +71,7 @@ export default function AdminDashboard() {
                 <DollarSign size={24} color="#10b981" />
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={14} /> +12.5% vs mês anterior
-            </p>
+            <p style={{ fontSize: '12px', color: '#888' }}>Pedidos processados, enviados ou entregues</p>
           </div>
 
           {/* Orders Card */}
@@ -116,9 +85,7 @@ export default function AdminDashboard() {
                 <ShoppingCart size={24} color="#3b82f6" />
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={14} /> +8.2% vs mês anterior
-            </p>
+            <p style={{ fontSize: '12px', color: '#888' }}>Processados, enviados ou entregues</p>
           </div>
 
           {/* Products Card */}
@@ -139,16 +106,14 @@ export default function AdminDashboard() {
           <div style={{ backgroundColor: '#111', padding: '24px', borderRadius: '12px', border: '1px solid #333' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
-                <p style={{ fontSize: '14px', color: '#888', marginBottom: '8px' }}>Total de Clientes</p>
-                <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff' }}>{analytics.totalCustomers}</p>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '8px' }}>Total de Usuários</p>
+                <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff' }}>{analytics.totalUsers}</p>
               </div>
               <div style={{ backgroundColor: 'rgba(236, 72, 153, 0.1)', padding: '12px', borderRadius: '8px' }}>
                 <Users size={24} color="#ec4899" />
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#ec4899', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={14} /> +15.3% vs mês anterior
-            </p>
+            <p style={{ fontSize: '12px', color: '#888' }}>Clientes, vendedores e admins</p>
           </div>
 
           {/* Analytics & Marketing Link Card */}
@@ -237,40 +202,26 @@ export default function AdminDashboard() {
 
 
 
-        {/* Charts */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '40px' }}>
-          {/* Sales Chart */}
-          <div style={{ backgroundColor: '#111', padding: '24px', borderRadius: '12px', border: '1px solid #333' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#fff' }}>Vendas por Mês</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analytics.salesByMonth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="month" stroke="#888" />
-                <YAxis stroke="#888" />
-                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} name="Receita (R$)" />
-                <Line type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={2} name="Pedidos" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Top Products */}
+        {/* Top Products — o backend ainda não agrega vendas por mês
+            (só existe o relatório bruto em getSalesReport), então por
+            enquanto mostramos só o que é real: produtos mais vendidos. */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginBottom: '40px' }}>
           <div style={{ backgroundColor: '#111', padding: '24px', borderRadius: '12px', border: '1px solid #333' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#fff' }}>Top Produtos</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {analytics.topProducts.map((product, index) => (
-                <div key={index} style={{ borderBottom: index < analytics.topProducts.length - 1 ? '1px solid #333' : 'none', paddingBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <p style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>{product.name}</p>
-                    <span style={{ fontSize: '12px', color: '#888' }}>{product.sold} vendidos</span>
+            {analytics.topProducts.length === 0 ? (
+              <p style={{ fontSize: '14px', color: '#888' }}>Ainda não há vendas suficientes para calcular um ranking.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {analytics.topProducts.map((product, index) => (
+                  <div key={product.id} style={{ borderBottom: index < analytics.topProducts.length - 1 ? '1px solid #333' : 'none', paddingBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: '#fff' }}>{product.name}</p>
+                      <span style={{ fontSize: '12px', color: '#888' }}>{product.totalSold} vendidos</span>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#10b981' }}>
-                    R$ {product.revenue.toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

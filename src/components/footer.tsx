@@ -1,181 +1,98 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowUp } from "lucide-react";
+
+const columns = [
+  {
+    title: "Conheça-nos",
+    links: [
+      { href: "/about", label: "Sobre o TechMart" },
+      { href: "/careers", label: "Carreiras" },
+      { href: "/blog", label: "Blog" },
+    ],
+  },
+  {
+    title: "Ganhe dinheiro conosco",
+    links: [
+      { href: "/sell", label: "Venda no TechMart" },
+      { href: "/affiliate", label: "Seja um afiliado" },
+      { href: "/advertise", label: "Anuncie seus produtos" },
+    ],
+  },
+  {
+    title: "Formas de pagamento",
+    links: [
+      { href: "/payment", label: "Compre com pontos" },
+      { href: "/balance", label: "Atualizar seu saldo" },
+      { href: "/currency", label: "Conversor de moedas" },
+    ],
+  },
+  {
+    title: "Deixe-nos ajudar você",
+    links: [
+      { href: "/account", label: "Sua conta" },
+      { href: "/orders", label: "Seus pedidos" },
+      { href: "/shipping", label: "Frete e prazo de entrega" },
+      { href: "/returns", label: "Devoluções e reembolsos" },
+      { href: "/help", label: "Ajuda" },
+    ],
+  },
+];
 
 export function Footer() {
   return (
-    <footer style={{ backgroundColor: '#0A0A0A', color: '#fff', marginTop: 'auto', borderTop: '2px solid #7F5AF0' }}>
-      {/* Botão Voltar ao Topo */}
-      <div
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        style={{
-          backgroundColor: '#1a1a1a',
-          textAlign: 'center',
-          padding: '15px',
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '500',
-          borderBottom: '1px solid #333'
-        }}
+    <footer className="mt-auto border-t border-primary/20 bg-secondary text-white">
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        className="flex w-full items-center justify-center gap-2 border-b border-white/10 bg-white/5 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
       >
+        <ArrowUp size={14} />
         Voltar ao início
-      </div>
+      </button>
 
-      {/* Conteúdo Principal */}
-      <div style={{ maxWidth: '1500px', margin: '0 auto', padding: '40px 20px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '40px',
-          marginBottom: '40px'
-        }}>
-          {/* Coluna 1 */}
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '14px', color: '#7F5AF0' }}>Conheça-nos</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/about" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Sobre o TechMart
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/careers" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Carreiras
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/blog" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Blog
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Coluna 2 */}
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '14px', color: '#7F5AF0' }}>Ganhe dinheiro conosco</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/sell" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Venda no TechMart
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/affiliate" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Seja um afiliado
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/advertise" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Anuncie seus produtos
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Coluna 3 */}
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '14px', color: '#7F5AF0' }}>Formas de pagamento</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/payment" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Compre com pontos
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/balance" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Atualizar seu saldo
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/currency" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Conversor de moedas
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Coluna 4 */}
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '14px', color: '#7F5AF0' }}>Deixe-nos ajudar você</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/account" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Sua conta
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/orders" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Seus pedidos
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/shipping" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Frete e prazo de entrega
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/returns" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Devoluções e reembolsos
-                </Link>
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                <Link href="/help" style={{ color: '#DDD', fontSize: '14px', textDecoration: 'none' }}>
-                  Ajuda
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Linha divisória */}
-        <div style={{ borderTop: '1px solid #333', paddingTop: '30px' }}>
-          {/* Logo e idioma */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <Link href="/" style={{ fontSize: '20px', fontWeight: 'bold', color: '#7F5AF0', textDecoration: 'none' }}>
-              TechMart
-            </Link>
-            <div style={{ display: 'flex', gap: '15px', fontSize: '12px' }}>
-              <button style={{
-                padding: '8px 15px',
-                backgroundColor: 'transparent',
-                border: '1px solid #555',
-                color: '#DDD',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}>
-                🌐 Português
-              </button>
-              <button style={{
-                padding: '8px 15px',
-                backgroundColor: 'transparent',
-                border: '1px solid #555',
-                color: '#DDD',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}>
-                💵 BRL - R$
-              </button>
-              <button style={{
-                padding: '8px 15px',
-                backgroundColor: 'transparent',
-                border: '1px solid #555',
-                color: '#DDD',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}>
-                🇧🇷 Brasil
-              </button>
+      <div className="mx-auto max-w-[1500px] px-4 py-12">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 md:grid-cols-4">
+          {columns.map((col) => (
+            <div key={col.title}>
+              <h3 className="mb-3 font-display text-sm font-semibold text-primary">
+                {col.title}
+              </h3>
+              <ul className="space-y-2">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-white/60 transition-colors hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4 border-t border-white/10 pt-8">
+          <Link href="/" className="font-display text-lg font-bold text-primary">
+            TechMart
+          </Link>
+          <div className="flex flex-wrap gap-3 text-xs">
+            {["🌐 Português", "💵 BRL - R$", "🇧🇷 Brasil"].map((label) => (
+              <button
+                key={label}
+                className="rounded-full border border-white/15 px-3 py-1.5 text-white/70 transition-colors hover:border-white/30 hover:text-white"
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Rodapé final */}
-      <div style={{ backgroundColor: '#000', padding: '20px', textAlign: 'center', borderTop: '1px solid #333' }}>
-        <p style={{ margin: 0, fontSize: '12px', color: '#999' }}>
-          © {new Date().getFullYear()} TechMart. Todos os direitos reservados.
-        </p>
+      <div className="border-t border-white/10 bg-black/30 py-5 text-center text-xs text-white/50">
+        © {new Date().getFullYear()} TechMart. Todos os direitos reservados.
       </div>
     </footer>
   );

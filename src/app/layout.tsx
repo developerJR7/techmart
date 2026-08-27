@@ -6,6 +6,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { CustomerChatbot } from "@/components/customer-chatbot";
 import { AuthInitializer } from "@/components/auth-initializer";
 
@@ -52,14 +53,16 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen`}>
         <ThemeProvider>
           <QueryProvider>
-            <AuthInitializer />
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-            <CustomerChatbot />
-            <Toaster />
+            <TooltipProvider delayDuration={200}>
+              <AuthInitializer />
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+              <CustomerChatbot />
+              <Toaster />
+            </TooltipProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

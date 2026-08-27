@@ -1,5 +1,14 @@
 import api from '@/lib/api';
-import { Product, PaginatedResponse, Order, User, CreateProductDto } from '@/types/api.types';
+import { Product, PaginatedResponse, Order, AdminUserSummary, UserRole, CreateProductDto } from '@/types/api.types';
+
+interface CouponInput {
+    code: string;
+    type: 'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING';
+    value: number;
+    expiresAt?: string;
+    usageLimit?: number;
+    isActive?: boolean;
+}
 
 export const adminService = {
     // ============ PRODUTOS ============
@@ -58,19 +67,12 @@ export const adminService = {
         return data;
     },
 
-    async createCoupon(couponData: {
-        code: string;
-        type: 'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING';
-        value: number;
-        expiresAt?: string;
-        usageLimit?: number;
-        isActive?: boolean;
-    }) {
+    async createCoupon(couponData: CouponInput) {
         const { data } = await api.post('/admin/coupons', couponData);
         return data;
     },
 
-    async updateCoupon(id: string, couponData: Partial<any>) {
+    async updateCoupon(id: string, couponData: Partial<CouponInput>) {
         const { data } = await api.patch(`/admin/coupons/${id}`, couponData);
         return data;
     },
@@ -86,13 +88,13 @@ export const adminService = {
         role?: string;
         search?: string;
     }) {
-        const { data } = await api.get<PaginatedResponse<User>>('/admin/users', {
+        const { data } = await api.get<PaginatedResponse<AdminUserSummary>>('/admin/users', {
             params: filters,
         });
         return data;
     },
 
-    async updateUserRole(userId: string, role: 'USER' | 'ADMIN') {
+    async updateUserRole(userId: string, role: UserRole) {
         const { data } = await api.patch(`/admin/users/${userId}/role`, { role });
         return data;
     },

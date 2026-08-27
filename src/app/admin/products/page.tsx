@@ -104,7 +104,7 @@ export default function AdminProductsPage() {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })} • Estoque: {product.stock} •{" "}
-                        {product.featured && "⭐ Destaque"}
+                        {product.isFeatured && "⭐ Destaque"}
                       </p>
                     </div>
                     <div className="flex gap-2">

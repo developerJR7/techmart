@@ -7,21 +7,12 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
 import { adminService } from "@/services/admin.service";
-import api from "@/lib/api";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-}
+import { AdminUserSummary } from "@/types/api.types";
 
 export default function AdminUsersPage() {
   const router = useRouter();
   const { isAdmin, isAuthenticated } = useAuthStore();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

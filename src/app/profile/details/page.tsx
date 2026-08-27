@@ -70,7 +70,9 @@ export default function ProfileDetailsPage() {
                         <div className="p-2 bg-zinc-900 rounded-lg group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-colors">
                             <Shield className="h-5 w-5" />
                         </div>
-                        <span className="font-medium">{profile.role === 'ADMIN' ? 'Administrador' : 'Cliente'}</span>
+                        <span className="font-medium">
+                            {profile.role === 'ADMIN' ? 'Administrador' : profile.role === 'SELLER' ? 'Vendedor' : 'Cliente'}
+                        </span>
                     </div>
                 </div>
 

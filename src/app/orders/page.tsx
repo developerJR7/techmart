@@ -43,19 +43,7 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
         try {
             const response = await ordersService.getOrders();
-            // Handle both paginated and array responses if necessary, but service returns PaginatedResponse usually
-            // However, the service definition says it returns data directly if I recall correctly?
-            // Let's check service again. It returns `data` from api.get.
-            // api.get<PaginatedResponse<Order>> returns { data: PaginatedResponse<Order> }
-            // So response is PaginatedResponse<Order>.
-            // So orders should be response.data.
-            if ('data' in response && Array.isArray(response.data)) {
-                setOrders(response.data);
-            } else if (Array.isArray(response)) {
-                setOrders(response);
-            } else {
-                setOrders([]);
-            }
+            setOrders(response.data);
         } catch (error) {
             console.error("Erro ao carregar pedidos:", error);
         } finally {
@@ -153,7 +141,7 @@ export default function OrdersPage() {
                                                 <div className="space-y-4">
                                                     {/* Itens do Pedido (Preview - max 2 items) */}
                                                     <div className="space-y-3">
-                                                        {order.items.slice(0, 2).map((item) => (
+                                                        {order.orderItems.slice(0, 2).map((item) => (
                                                             <div key={item.id} className="flex items-center gap-4 pb-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
                                                                 <div className="flex-1">
                                                                     <p className="font-medium">{item.product.name}</p>
@@ -166,9 +154,9 @@ export default function OrdersPage() {
                                                                 </p>
                                                             </div>
                                                         ))}
-                                                        {order.items.length > 2 && (
+                                                        {order.orderItems.length > 2 && (
                                                             <p className="text-sm text-gray-500 text-center pt-2">
-                                                                e mais {order.items.length - 2} itens...
+                                                                e mais {order.orderItems.length - 2} itens...
                                                             </p>
                                                         )}
                                                     </div>

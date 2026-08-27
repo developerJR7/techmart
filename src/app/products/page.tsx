@@ -2,108 +2,108 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { ProductCard } from "@/components/product-card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SearchInput } from "@/components/ui/search-input";
+import { Pagination } from "@/components/ui/pagination";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { Search } from "lucide-react";
-import { productsService } from "@/services/products.service";
-import { Product } from "@/types/api.types";
-import { useToast } from "@/hooks/use-toast";
+import { productsService, productKeys } from "@/services/products.service";
+import { categoriesService, Category } from "@/services/categories.service";
+
+const PAGE_SIZE = 20;
 
 function ProductsContent() {
   const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const initialSearch = searchParams.get("search") ?? "";
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
+  // Ajusta o estado durante a renderização (em vez de um useEffect) quando o
+  // `?search=` da URL muda — ver "Adjusting state when a prop changes" nos
+  // docs do React. Evita o round-trip extra de um efeito só pra sincronizar.
+  const [syncedSearchParam, setSyncedSearchParam] = useState(initialSearch);
+  if (initialSearch !== syncedSearchParam) {
+    setSyncedSearchParam(initialSearch);
+    setSearchQuery(initialSearch);
+    setDebouncedSearch(initialSearch);
+  }
 
   useEffect(() => {
-    const query = searchParams.get("search");
-    if (query) {
-      setSearchQuery(query);
-    }
-  }, [searchParams]);
+    categoriesService
+      .getCategories()
+      .then(setCategories)
+      .catch((error) => console.error("Erro ao carregar categorias:", error));
+  }, []);
 
+  // Debounce: só atualiza o valor que entra na query key 500ms depois de
+  // parar de digitar, pra não disparar uma request por tecla.
   useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      try {
-        const response = await productsService.getProducts({
-          search: searchQuery,
-          category: selectedCategory,
-          page: currentPage,
-          limit: 20
-        });
-
-        // Service now returns { data: Product[], meta: ... }
-        // But types might say it returns PaginatedResponse directly.
-        // Let's handle both cases to be safe or just match what we changed in service.
-        // We changed service to return { data, meta } object.
-
-        // If response has data property which is an array
-        if (response && Array.isArray(response.data)) {
-          setProducts(response.data);
-          if (response.meta) {
-            setTotalPages(Math.ceil(response.meta.total / response.meta.limit));
-          }
-        } else if (Array.isArray(response)) {
-          // Fallback if service returns array directly
-          setProducts(response);
-        } else {
-          setProducts([]);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar produtos:", error);
-        toast({
-          variant: "error",
-          title: "Erro ao carregar produtos",
-          description: "Não foi possível buscar os produtos. Tente novamente."
-        });
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      fetchProducts();
-    }, 500);
-
+    const timeoutId = setTimeout(() => setDebouncedSearch(searchQuery), 500);
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, selectedCategory, currentPage, toast]);
+  }, [searchQuery]);
+
+  // Volta pra primeira página sempre que um filtro muda (mesmo padrão de
+  // ajuste de estado durante a renderização, em vez de useEffect).
+  const filterKey = `${debouncedSearch}::${selectedCategoryId}`;
+  const [syncedFilterKey, setSyncedFilterKey] = useState(filterKey);
+  if (filterKey !== syncedFilterKey) {
+    setSyncedFilterKey(filterKey);
+    setCurrentPage(1);
+  }
+
+  const filters = {
+    search: debouncedSearch,
+    categoryId: selectedCategoryId || undefined,
+    page: currentPage,
+    limit: PAGE_SIZE,
+  };
+
+  const {
+    data,
+    isPending: loading,
+    isError: error,
+    refetch,
+  } = useQuery({
+    queryKey: productKeys.list(filters),
+    queryFn: ({ signal }) => productsService.getProducts(filters, signal),
+    placeholderData: keepPreviousData,
+  });
+
+  const products = data?.data ?? [];
+  const totalPages = data ? Math.ceil(data.meta.total / data.meta.limit) || 1 : 1;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-muted/40">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">Nossos Produtos</h1>
-          <p className="text-gray-600 mb-6">Explore nossa coleção completa de tecnologia</p>
+          <h1 className="mb-4 font-display text-3xl font-bold text-foreground">Nossos Produtos</h1>
+          <p className="mb-6 text-muted-foreground">Explore nossa coleção completa de tecnologia</p>
 
           {/* Search */}
           <div className="flex gap-4 mb-6">
-            <div className="relative flex-1 max-w-xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Buscar produtos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Buscar produtos..."
+              className="flex-1 max-w-xl"
+            />
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              className="rounded-md border border-input bg-card px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas as categorias</option>
-              <option value="electronics">Eletrônicos</option>
-              <option value="computers">Computadores</option>
-              <option value="smartphones">Smartphones</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -112,16 +112,21 @@ function ProductsContent() {
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[...Array(20)].map((_, i) => (
-              <div key={i} className="bg-white p-4 rounded">
+              <div key={i} className="rounded-xl bg-card p-4">
                 <Skeleton className="aspect-square w-full mb-4" />
                 <Skeleton className="h-4 w-3/4 mb-2" />
                 <Skeleton className="h-4 w-1/2" />
               </div>
             ))}
           </div>
+        ) : error ? (
+          <ErrorState
+            description="Não foi possível buscar os produtos. Tente novamente."
+            onRetry={() => refetch()}
+          />
         ) : products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {products.map((product, index) => (
+            {products.map((product) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
@@ -129,40 +134,20 @@ function ProductsContent() {
                 price={product.price}
                 image={product.images?.[0]}
                 slug={product.slug}
-                discount={index % 3 === 0 ? 15 : 0}
+                rating={product.averageRating}
+                reviewCount={product.reviewCount}
               />
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded">
-            <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum produto encontrado</h3>
-            <p className="text-gray-500">Tente buscar por outro termo.</p>
-          </div>
+          <EmptyState
+            icon={Search}
+            title="Nenhum produto encontrado"
+            description="Tente buscar por outro termo ou remover os filtros."
+          />
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-8">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-            <span className="flex items-center px-4">
-              Página {currentPage} de {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-            </Button>
-          </div>
-        )}
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
     </div>
   );
@@ -171,7 +156,7 @@ function ProductsContent() {
 export default function ProductsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <div className="text-center">
           <Skeleton className="h-12 w-12 rounded-full mx-auto mb-4" />
           <p>Carregando produtos...</p>
