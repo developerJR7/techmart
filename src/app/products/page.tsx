@@ -18,20 +18,24 @@ const PAGE_SIZE = 20;
 function ProductsContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") ?? "";
+  const initialCategoryId = searchParams.get("categoryId") ?? "";
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Ajusta o estado durante a renderização (em vez de um useEffect) quando o
-  // `?search=` da URL muda — ver "Adjusting state when a prop changes" nos
-  // docs do React. Evita o round-trip extra de um efeito só pra sincronizar.
-  const [syncedSearchParam, setSyncedSearchParam] = useState(initialSearch);
-  if (initialSearch !== syncedSearchParam) {
-    setSyncedSearchParam(initialSearch);
+  // Ajusta o estado durante a renderização (em vez de um useEffect) quando
+  // `?search=`/`?categoryId=` da URL mudam — ver "Adjusting state when a prop
+  // changes" nos docs do React. Evita o round-trip extra de um efeito só pra
+  // sincronizar. Cobre o link de categoria vindo da Home (`?categoryId=`).
+  const urlParamsKey = `${initialSearch}::${initialCategoryId}`;
+  const [syncedUrlParamsKey, setSyncedUrlParamsKey] = useState(urlParamsKey);
+  if (urlParamsKey !== syncedUrlParamsKey) {
+    setSyncedUrlParamsKey(urlParamsKey);
     setSearchQuery(initialSearch);
     setDebouncedSearch(initialSearch);
+    setSelectedCategoryId(initialCategoryId);
   }
 
   useEffect(() => {

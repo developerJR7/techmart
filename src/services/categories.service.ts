@@ -7,6 +7,9 @@ export interface Category {
     description?: string;
     image?: string;
     isActive?: boolean;
+    // Presente em GET /categories e GET /categories/:id (categories.service.ts
+    // no backend inclui `_count`); ausente nas respostas de criar/atualizar.
+    _count?: { products: number };
 }
 
 export const categoriesService = {
