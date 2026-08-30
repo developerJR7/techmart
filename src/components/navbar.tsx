@@ -2,25 +2,32 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Search, ShoppingCart, Menu, Heart, X } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
+import { categoriesService } from "@/services/categories.service";
 import { cn } from "@/lib/utils";
 
-const categories = [
-  { href: "/products", label: "Ofertas do dia" },
-  { href: "/products?category=electronics", label: "Eletrônicos" },
-  { href: "/products?category=fashion", label: "Moda" },
-  { href: "/products?category=home", label: "Casa" },
-];
-
 export function Navbar() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const cartItems = useCartStore((state) => state.items);
   const wishlistItems = useWishlistStore((state) => state.items);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Categorias reais (não hardcoded) — mesma fonte que a Home usa pra
+  // linkar `/products?categoryId=`; staleTime alto porque categorias mudam
+  // com pouca frequência (cadastro via admin).
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => categoriesService.getCategories(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const navCategories = categories.slice(0, 4);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const wishlistCount = wishlistItems.length;
@@ -28,7 +35,7 @@ export function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/products?search=${encodeURIComponent(searchQuery)}`;
+      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
@@ -114,13 +121,16 @@ export function Navbar() {
             </button>
 
             <div className="hidden items-center gap-1 md:flex">
-              {categories.map((c) => (
+              <Link href="/products" className="rounded-lg px-3 py-1.5 transition-colors hover:bg-white/10">
+                Todos os produtos
+              </Link>
+              {navCategories.map((category) => (
                 <Link
-                  key={c.href}
-                  href={c.href}
+                  key={category.id}
+                  href={`/products?categoryId=${category.id}`}
                   className="rounded-lg px-3 py-1.5 transition-colors hover:bg-white/10"
                 >
-                  {c.label}
+                  {category.name}
                 </Link>
               ))}
             </div>
@@ -167,14 +177,14 @@ export function Navbar() {
               >
                 Todos os Produtos
               </Link>
-              {categories.slice(1).map((c) => (
+              {navCategories.map((category) => (
                 <Link
-                  key={c.href}
-                  href={c.href}
+                  key={category.id}
+                  href={`/products?categoryId=${category.id}`}
                   onClick={() => setMobileMenuOpen(false)}
                   className="border-b border-white/10 py-3 text-sm text-white/90 hover:text-primary"
                 >
-                  {c.label}
+                  {category.name}
                 </Link>
               ))}
             </div>

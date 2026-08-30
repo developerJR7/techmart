@@ -1,11 +1,16 @@
 import api from '@/lib/api';
 import { Product, PaginatedResponse, CreateProductDto } from '@/types/api.types';
 
+export type ProductSort = 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating_desc';
+
 export interface ProductFilters {
     categoryId?: string;
     minPrice?: number;
     maxPrice?: number;
+    minRating?: number;
+    inStock?: boolean;
     search?: string;
+    sort?: ProductSort;
     page?: number;
     limit?: number;
     featured?: boolean;
