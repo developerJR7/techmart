@@ -31,6 +31,12 @@ export interface AdminUserSummary {
     createdAt: string;
 }
 
+export interface ProductSpecification {
+    id: string;
+    key: string;
+    value: string;
+}
+
 export interface Product {
     id: string;
     name: string;
@@ -40,6 +46,10 @@ export interface Product {
     // axios não converte isso automaticamente. products.service.ts normaliza
     // pra number antes de expor o produto pro resto do app.
     price: number;
+    // Campo legado de imagem única — vários produtos do seed só têm este
+    // preenchido, com `images` vazio. Sempre resolver a galeria combinando
+    // os dois (ver product-gallery.tsx), nunca ler só `images[0]`.
+    image?: string | null;
     images: string[];
     category: Category;
     stock: number;
@@ -48,8 +58,13 @@ export interface Product {
     // reviews.service.ts, que recalcula os dois campos a cada review).
     averageRating: number | null;
     reviewCount: number;
-    // Presente no schema, mas products.service.ts (backend) nunca dá
-    // `include: { store: true }` — só o id da FK é retornado hoje.
+    // Só vem preenchido em GET /products/:id e /products/slug/:slug — a
+    // listagem (GET /products) não faz esse include. Por isso é opcional
+    // aqui: undefined ≠ "produto sem especificações", é "endpoint não pediu".
+    specifications?: ProductSpecification[];
+    // Presente no schema, mas nenhum fluxo de criação de produto hoje seta
+    // um storeId real — sempre null na prática nesta fase (sem Seller
+    // Dashboard ainda). Mantido no tipo só porque o backend devolve o campo.
     storeId: string | null;
     createdAt: string;
     updatedAt: string;

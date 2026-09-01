@@ -65,35 +65,41 @@ export function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
 
     if (!user) {
         return (
-            <div className="bg-gray-50 p-6 rounded-lg text-center">
-                <p className="text-gray-600 mb-2">Faça login para avaliar este produto.</p>
+            <div className="rounded-xl bg-card border border-border p-6 text-center">
+                <p className="mb-3 text-sm text-muted-foreground">Faça login para avaliar este produto.</p>
                 <Button variant="outline" asChild>
-                    <a href="/login">Fazer Login</a>
+                    <a href="/login">Fazer login</a>
                 </Button>
             </div>
         );
     }
 
     return (
-        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Escreva sua avaliação</h3>
+        <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-6 shadow-soft">
+            <h3 className="mb-4 font-display text-lg font-semibold text-card-foreground">Escreva sua avaliação</h3>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sua nota</label>
-                <div className="flex gap-1">
+                <label className="mb-1 block text-sm font-medium text-card-foreground" id="rating-label">
+                    Sua nota
+                </label>
+                <div className="flex gap-1" role="radiogroup" aria-labelledby="rating-label">
                     {[1, 2, 3, 4, 5].map((star) => (
                         <button
                             key={star}
                             type="button"
-                            className="focus:outline-none transition-transform hover:scale-110"
+                            role="radio"
+                            aria-checked={rating === star}
+                            aria-label={`${star} de 5 estrelas`}
+                            className="rounded transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             onMouseEnter={() => setHoverRating(star)}
                             onMouseLeave={() => setHoverRating(0)}
                             onClick={() => setRating(star)}
                         >
                             <Star
+                                aria-hidden="true"
                                 className={`h-6 w-6 ${star <= (hoverRating || rating)
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "fill-gray-200 text-gray-200"
+                                        ? "fill-amber text-amber"
+                                        : "fill-muted text-muted"
                                     }`}
                             />
                         </button>
@@ -102,30 +108,36 @@ export function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
             </div>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título (opcional)</label>
+                <label htmlFor="review-title" className="mb-1 block text-sm font-medium text-card-foreground">
+                    Título (opcional)
+                </label>
                 <input
+                    id="review-title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     placeholder="Resumo da sua experiência"
                 />
             </div>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comentário</label>
+                <label htmlFor="review-comment" className="mb-1 block text-sm font-medium text-card-foreground">
+                    Comentário
+                </label>
                 <textarea
+                    id="review-comment"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     required
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     placeholder="O que você achou do produto?"
                 />
             </div>
 
             <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Enviando..." : "Enviar Avaliação"}
+                {submitting ? "Enviando..." : "Enviar avaliação"}
             </Button>
         </form>
     );

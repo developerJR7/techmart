@@ -2,20 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Minus, Plus, Heart, Share2, Star, ChevronRight, Truck, Shield, RotateCcw } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Card, CardContent } from "@/components/ui/card";
+import { ShoppingCart, Heart, Star, Truck, PackageX, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
-import { motion } from "framer-motion";
 import { productsService, productKeys } from "@/services/products.service";
-import { recommendationsService, FrequentlyBoughtTogether } from "@/services/recommendations.service";
-import { Product } from "@/types/api.types";
 import { ProductCard } from "@/components/product-card";
+import { ProductGallery } from "@/components/products/product-gallery";
+import { QuantitySelector } from "@/components/products/quantity-selector";
 import { ReviewList } from "@/components/reviews/review-list";
 import { ReviewForm } from "@/components/reviews/review-form";
 import { useToast } from "@/hooks/use-toast";
@@ -25,291 +26,329 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+const LOW_STOCK_THRESHOLD = 5;
+// Mesma regra usada em /cart e /checkout — mantida aqui só como estimativa
+// (não considera outros itens já no carrinho).
+const FREE_SHIPPING_THRESHOLD = 200;
+
 export default function ProductPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const { toast } = useToast();
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
-  const [frequentlyBought, setFrequentlyBought] = useState<FrequentlyBoughtTogether | null>(null);
+
   const [quantity, setQuantity] = useState(1);
+  const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const [now] = useState(() => Date.now());
+
   const { addItem } = useCartStore();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
 
   const {
     data: product,
-    isLoading: loading,
-    isError: hasProductError,
+    isLoading,
+    isError,
+    refetch,
   } = useQuery({
     queryKey: productKeys.detail(slug),
     queryFn: ({ signal }) => productsService.getProductBySlug(slug, signal),
     enabled: !!slug,
+    retry: 1,
   });
 
-  useEffect(() => {
-    if (hasProductError) {
-      toast({
-        variant: "error",
-        title: "Erro ao carregar produto",
-        description: "Não foi possível carregar os detalhes do produto."
-      });
-    }
-  }, [hasProductError, toast]);
-
-  // Recomendações são secundárias ao produto em si — buscadas à parte pra
-  // uma falha aqui nunca impedir a página de mostrar o produto principal.
-  // Depende só do id (não do objeto `product` inteiro): o useQuery devolve
-  // uma referência nova a cada refetch em background mesmo com o mesmo id,
-  // o que reexecutaria essas 3 chamadas à toa a cada revalidação.
   const productId = product?.id;
+
+  // Relacionados reais (mesma categoria, GET /products/:id/related) — as
+  // recomendações de IA (similar/frequently-bought-together) não devolvem
+  // slug/categoria no payload, então não dá pra linkar pra elas com
+  // segurança; por isso esta página usa só o endpoint de relacionados.
+  const { data: relatedProducts = [] } = useQuery({
+    queryKey: ["products", "related", productId],
+    queryFn: () => productsService.getRelatedProducts(productId!),
+    enabled: !!productId,
+  });
+
+  // Produto trocado (navegação entre slugs) → quantidade não pode carregar
+  // um valor que pode exceder o estoque do novo produto.
   useEffect(() => {
-    if (!productId) return;
-
-    recommendationsService
-      .getSimilarProducts(productId, 4)
-      .then((similar) => setSimilarProducts(similar.map((s) => s as unknown as Product)))
-      .catch((err) => console.error("Erro ao carregar produtos similares", err));
-
-    recommendationsService
-      .getFrequentlyBoughtTogether(productId)
-      .then(setFrequentlyBought)
-      .catch((err) => console.error("Erro ao carregar produtos comprados juntos", err));
-
-    // Fallback to related products if AI fails
-    productsService
-      .getRelatedProducts(productId)
-      .then((related) => setRelatedProducts(related.slice(0, 4)))
-      .catch((err) => console.error("Erro ao carregar produtos relacionados", err));
+    setQuantity(1);
   }, [productId]);
 
-  const handleAddToCart = async () => {
-    if (product) {
-      await addItem({
-        id: product.id,
-        name: product.name,
-        price: Number(product.price),
-        image: product.images?.[0],
-        slug: product.slug,
-        quantity: quantity
-      });
-
-      toast({
-        title: "Adicionado ao carrinho",
-        description: `${quantity}x ${product.name} adicionado com sucesso.`,
-        style: { backgroundColor: '#7F5AF0', color: 'white', border: 'none' }
-      });
-    }
-  };
-
-  const handleWishlist = () => {
-    if (product) {
-      if (isInWishlist(product.id)) {
-        removeFromWishlist(product.id);
-        toast({
-          title: "Removido da lista de desejos",
-          description: "Produto removido da sua lista."
-        });
-      } else {
-        addToWishlist({
-          id: product.id,
-          name: product.name,
-          price: Number(product.price),
-          image: product.images?.[0],
-          slug: product.slug
-        });
-        toast({
-          title: "Adicionado à lista de desejos",
-          description: "Produto salvo na sua lista."
-        });
-      }
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <Skeleton className="h-8 w-1/3" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <Skeleton className="aspect-square rounded-3xl" />
-          <div className="space-y-6">
-            <Skeleton className="h-12 w-3/4" />
-            <Skeleton className="h-8 w-1/4" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-12 w-full" />
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="mb-8 h-5 w-1/3" />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
+          <Skeleton className="aspect-square rounded-2xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-32 w-full rounded-xl" />
           </div>
         </div>
       </div>
     );
   }
 
-  if (!product) {
+  if (isError) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Produto não encontrado</h1>
-        <p className="text-gray-500 mb-8">O produto que você está procurando não existe ou foi removido.</p>
-        <Link href="/products">
-          <Button>Voltar para a loja</Button>
-        </Link>
+      <div className="container mx-auto px-4 py-16">
+        <ErrorState
+          title="Não foi possível carregar o produto"
+          description="Verifique sua conexão e tente novamente."
+          onRetry={() => refetch()}
+        />
       </div>
     );
   }
 
-  const inWishlist = isInWishlist(product.id);
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <EmptyState
+          icon={PackageX}
+          title="Produto não encontrado"
+          description="O produto que você está procurando não existe ou foi removido."
+          action={{ label: "Voltar para a loja", onClick: () => router.push("/products") }}
+        />
+      </div>
+    );
+  }
+
   // "Novo" é real: só aparece pra produtos cadastrados nos últimos 30 dias,
-  // calculado a partir do createdAt de verdade (antes era um badge fixo em
-  // todo produto, sem relação com nenhum dado). `now` fica travado no
+  // calculado a partir do createdAt de verdade. `now` fica travado no
   // instante da montagem (Date.now() direto no corpo do render é impuro).
   const isNew = now - new Date(product.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000;
+  const inWishlist = isInWishlist(product.id);
+  const inStock = product.stock > 0;
+  const lowStock = inStock && product.stock <= LOW_STOCK_THRESHOLD;
+
+  // `images` é o array real da galeria; `image` é um campo legado que
+  // vários produtos do seed só têm este preenchido (images: [] vazio).
+  // Sem esse fallback, esses produtos apareceriam sem nenhuma imagem.
+  const galleryImages = product.images.length > 0 ? product.images : product.image ? [product.image] : [];
+  const primaryImage = galleryImages[0];
+
+  async function handleAddToCart() {
+    if (!product || !inStock) return;
+    setIsAddingToCart(true);
+    try {
+      await addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: primaryImage,
+        slug: product.slug,
+        quantity,
+      });
+      toast({
+        variant: "success",
+        title: "Adicionado ao carrinho",
+        description: `${quantity}x ${product.name} adicionado com sucesso.`,
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }
+
+  async function handleBuyNow() {
+    if (!product || !inStock) return;
+    setIsBuyingNow(true);
+    try {
+      await addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: primaryImage,
+        slug: product.slug,
+        quantity,
+      });
+      router.push("/checkout");
+    } finally {
+      setIsBuyingNow(false);
+    }
+  }
+
+  async function handleWishlistToggle() {
+    if (!product) return;
+    setIsTogglingWishlist(true);
+    try {
+      if (inWishlist) {
+        await removeFromWishlist(product.id);
+        toast({ title: "Removido da lista de desejos", description: "Produto removido da sua lista." });
+      } else {
+        await addToWishlist({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: primaryImage,
+          slug: product.slug,
+        });
+        toast({ title: "Adicionado à lista de desejos", description: "Produto salvo na sua lista." });
+      }
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
+    <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-8 overflow-x-auto whitespace-nowrap pb-2">
-          <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
-          <ChevronRight className="h-4 w-4 mx-2" />
-          <Link href="/products" className="hover:text-blue-600 transition-colors">Produtos</Link>
-          <ChevronRight className="h-4 w-4 mx-2" />
-          <span className="text-gray-900 dark:text-white font-medium">{product.name}</span>
-        </nav>
+        <Breadcrumb
+          className="mb-6"
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Produtos", href: "/products" },
+            { label: product.category.name, href: `/products?categoryId=${product.category.id}` },
+            { label: product.name },
+          ]}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
-          {/* Product Image */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="relative aspect-square bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm"
-          >
-            {product.images?.[0] ? (
-              <Image
-                src={product.images[0]}
-                alt={product.name}
-                fill
-                className="object-contain p-8 hover:scale-105 transition-transform duration-500"
-                priority
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                Sem imagem
-              </div>
-            )}
-            {isNew && (
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none px-3 py-1 text-sm">
-                  Novo
-                </Badge>
-              </div>
-            )}
-          </motion.div>
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
+          <ProductGallery images={galleryImages} productName={product.name} />
 
-          {/* Product Info */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col"
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
-                {product.category.name}
-              </Badge>
+          <div className="flex flex-col">
+            {isNew && <Badge className="mb-3 w-fit">Novo</Badge>}
+
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <Badge variant="outline">{product.category.name}</Badge>
               {product.averageRating != null && (
-                <div className="flex items-center text-yellow-400 text-sm">
-                  <Star className="h-4 w-4 fill-current" />
-                  <span className="ml-1 text-gray-600 dark:text-gray-400 font-medium">
-                    {product.averageRating.toFixed(1)} ({product.reviewCount} avaliações)
+                <div className="flex items-center gap-1.5 text-sm">
+                  <div className="flex" role="img" aria-label={`${product.averageRating.toFixed(1)} de 5 estrelas`}>
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        aria-hidden="true"
+                        className={`h-4 w-4 ${
+                          i < Math.floor(product.averageRating!) ? "fill-amber text-amber" : "fill-muted text-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground">
+                    {product.averageRating.toFixed(1)} ({product.reviewCount}{" "}
+                    {product.reviewCount === 1 ? "avaliação" : "avaliações"})
                   </span>
                 </div>
               )}
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
-              {product.name}
-            </h1>
+            <h1 className="mb-4 text-3xl font-bold leading-tight text-foreground md:text-4xl">{product.name}</h1>
 
-            {/* Sem originalPrice/desconto real no contrato do Product — mostra só o
-                preço de verdade em vez de forjar um "de/por" e um "20% OFF" fixos. */}
-            <div className="flex items-baseline gap-4 mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                {currencyFormatter.format(product.price)}
-              </span>
-            </div>
+            {/* Sem originalPrice/desconto real no contrato do Product — mostra
+                só o preço de verdade em vez de forjar um "de/por" fixo. */}
+            <p className="mb-2 text-4xl font-bold text-foreground">{currencyFormatter.format(product.price)}</p>
 
-            <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-lg">
-              {product.description}
+            <p
+              className={`mb-6 text-sm font-medium ${
+                !inStock ? "text-destructive" : lowStock ? "text-warning" : "text-success"
+              }`}
+            >
+              {!inStock
+                ? "Produto esgotado"
+                : lowStock
+                  ? `Restam apenas ${product.stock} unidades`
+                  : "Em estoque"}
             </p>
 
-            {/* Actions */}
-            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-8">
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="h-12 w-12 rounded-l-xl hover:bg-white dark:hover:bg-gray-700"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-12 text-center font-medium text-lg">{quantity}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    disabled={quantity >= product.stock}
-                    className="h-12 w-12 rounded-r-xl hover:bg-white dark:hover:bg-gray-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <Button
-                  className="flex-1 h-12 text-lg rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 transition-all hover:scale-[1.02]"
-                  onClick={handleAddToCart}
-                  disabled={product.stock === 0}
-                >
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                  {product.stock > 0 ? "Adicionar ao Carrinho" : "Esgotado"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className={`h-12 w-12 rounded-xl border-gray-200 dark:border-gray-700 ${inWishlist ? "text-red-500 border-red-200 bg-red-50" : "text-gray-500 hover:text-red-500"}`}
-                  onClick={handleWishlist}
-                >
-                  <Heart className={`h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
-                </Button>
-              </div>
+            <p className="mb-8 text-lg leading-relaxed text-muted-foreground">{product.description}</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-500 dark:text-gray-400">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-blue-600" />
-                  {/* Mesma regra de frete grátis do carrinho/checkout (subtotal > R$200),
-                      aplicada à quantidade selecionada aqui — não considera outros itens
-                      que já possam estar no carrinho, então é uma estimativa. */}
-                  <span>{product.price * quantity > 200 ? "Frete Grátis" : "Frete calculado no carrinho"}</span>
+            <Card className="mb-8 shadow-soft">
+              <CardContent className="p-6">
+                {inStock ? (
+                  <>
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+                      <QuantitySelector value={quantity} onChange={setQuantity} max={product.stock} />
+                      <Button
+                        className="h-12 flex-1 text-base"
+                        onClick={handleAddToCart}
+                        disabled={isAddingToCart || isBuyingNow}
+                      >
+                        {isAddingToCart ? (
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <ShoppingCart className="mr-2 h-5 w-5" aria-hidden="true" />
+                        )}
+                        Adicionar ao carrinho
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-12 w-12 shrink-0"
+                        onClick={handleWishlistToggle}
+                        disabled={isTogglingWishlist}
+                        aria-pressed={inWishlist}
+                        aria-label={inWishlist ? "Remover da lista de desejos" : "Adicionar à lista de desejos"}
+                      >
+                        {isTogglingWishlist ? (
+                          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Heart
+                            className={`h-5 w-5 ${inWishlist ? "fill-destructive text-destructive" : ""}`}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </Button>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      className="mb-4 h-12 w-full text-base"
+                      onClick={handleBuyNow}
+                      disabled={isBuyingNow || isAddingToCart}
+                    >
+                      {isBuyingNow && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                      Comprar agora
+                    </Button>
+                  </>
+                ) : (
+                  <Button className="mb-4 h-12 w-full text-base" disabled>
+                    Produto esgotado
+                  </Button>
+                )}
+
+                <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+                  <Truck className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <span>
+                    {product.price * quantity > FREE_SHIPPING_THRESHOLD
+                      ? "Frete grátis nesta quantidade"
+                      : "Frete calculado no carrinho"}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-600" />
-                  <span>Garantia de 1 ano</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RotateCcw className="h-4 w-4 text-blue-600" />
-                  <span>Troca em 30 dias</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+              </CardContent>
+            </Card>
+
+            {product.specifications && product.specifications.length > 0 && (
+              <Card className="mb-8">
+                <CardContent className="p-6">
+                  <h2 className="mb-4 text-lg font-semibold text-card-foreground">Especificações</h2>
+                  <dl className="divide-y divide-border">
+                    {product.specifications.map((spec) => (
+                      <div key={spec.id} className="flex justify-between gap-4 py-2.5 text-sm">
+                        <dt className="text-muted-foreground">{spec.key}</dt>
+                        <dd className="text-right font-medium text-card-foreground">{spec.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
 
-        {/* Reviews Section */}
-        <div className="mt-16 mb-16">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Avaliações dos Clientes</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Reviews */}
+        <div className="mt-16">
+          <h2 className="mb-6 text-2xl font-bold text-foreground">Avaliações dos clientes</h2>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <ReviewList productId={product.id} />
+              <ReviewList key={reviewsRefreshKey} productId={product.id} refreshTrigger={reviewsRefreshKey} />
             </div>
             <div>
-              <ReviewForm productId={product.id} onSuccess={() => window.location.reload()} />
+              <ReviewForm productId={product.id} onSuccess={() => setReviewsRefreshKey((k) => k + 1)} />
             </div>
           </div>
         </div>
@@ -317,15 +356,15 @@ export default function ProductPage() {
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Produtos Relacionados</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <h2 className="mb-6 text-2xl font-bold text-foreground">Produtos relacionados</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {relatedProducts.map((related) => (
                 <ProductCard
                   key={related.id}
                   id={related.id}
                   name={related.name}
                   price={related.price}
-                  image={related.images?.[0]}
+                  image={related.images?.[0] ?? related.image ?? undefined}
                   slug={related.slug}
                   rating={related.averageRating}
                   reviewCount={related.reviewCount}
@@ -338,4 +377,3 @@ export default function ProductPage() {
     </div>
   );
 }
-

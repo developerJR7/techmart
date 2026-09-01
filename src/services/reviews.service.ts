@@ -22,6 +22,20 @@ export interface Review {
     };
 }
 
+export interface ReviewsPagination {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+// Shape real de GET /reviews/product/:id (ver reviews.service.ts#findByProduct
+// no backend) — nunca `{ data, meta }`, é `{ reviews, pagination }`.
+export interface ReviewsPage {
+    reviews: Review[];
+    pagination: ReviewsPagination;
+}
+
 export const reviewsService = {
     async create(data: CreateReviewDto) {
         const response = await api.post<Review>('/reviews', data);
@@ -29,7 +43,7 @@ export const reviewsService = {
     },
 
     async getByProduct(productId: string, page = 1, limit = 10) {
-        const response = await api.get<{ data: Review[], meta: any }>(`/reviews/product/${productId}`, {
+        const response = await api.get<ReviewsPage>(`/reviews/product/${productId}`, {
             params: { page, limit }
         });
         return response.data;
