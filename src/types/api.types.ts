@@ -88,6 +88,26 @@ export interface OrderItem {
     price: number;
 }
 
+export interface Address {
+    id: string;
+    street: string;
+    number: string;
+    neighborhood: string;
+    complement?: string | null;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    isDefault: boolean;
+}
+
+// Reflete Payment.method/status do Prisma (schema.prisma) — CARD, não
+// "CREDIT_CARD" (isso nunca existiu no enum real do backend).
+export interface OrderPayment {
+    method: 'CARD' | 'PIX' | 'BOLETO';
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
+}
+
 export interface Order {
     id: string;
     userId: string;
@@ -100,7 +120,11 @@ export interface Order {
     discount: number;
     shippingCost: number;
     status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-    paymentMethod: 'PIX' | 'BOLETO' | 'CREDIT_CARD';
+    address: Address;
+    // Relação opcional de verdade: um pedido recém-criado ainda não tem
+    // Payment (criado só depois, numa chamada separada a /payments/*) —
+    // por isso `payment` pode vir `null`, nunca assuma que existe.
+    payment: OrderPayment | null;
     createdAt: string;
     updatedAt: string;
 }

@@ -21,7 +21,7 @@ const statusConfig = {
 };
 
 const paymentMethodConfig = {
-    CREDIT_CARD: { label: "Cartão de Crédito", icon: CreditCard },
+    CARD: { label: "Cartão de Crédito", icon: CreditCard },
     BOLETO: { label: "Boleto", icon: Barcode },
     PIX: { label: "PIX", icon: QrCode },
 };
@@ -109,8 +109,9 @@ export default function OrdersPage() {
                                 const statusLabel = statusConfig[order.status as keyof typeof statusConfig]?.label || order.status;
                                 const statusColor = statusConfig[order.status as keyof typeof statusConfig]?.color || "text-gray-600";
 
-                                const PaymentIcon = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.icon || CreditCard;
-                                const paymentLabel = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.label || order.paymentMethod;
+                                const paymentMethod = order.payment?.method;
+                                const PaymentIcon = paymentMethod ? (paymentMethodConfig[paymentMethod]?.icon || CreditCard) : Clock;
+                                const paymentLabel = paymentMethod ? (paymentMethodConfig[paymentMethod]?.label || paymentMethod) : "Pagamento não iniciado";
 
                                 return (
                                     <Link href={`/orders/${order.id}`} key={order.id} className="block hover:no-underline">

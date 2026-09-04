@@ -23,7 +23,7 @@ const statusConfig = {
 };
 
 const paymentMethodConfig = {
-    CREDIT_CARD: { label: "Cartão de Crédito", icon: CreditCard },
+    CARD: { label: "Cartão de Crédito", icon: CreditCard },
     BOLETO: { label: "Boleto", icon: Barcode },
     PIX: { label: "PIX", icon: QrCode },
 };
@@ -124,8 +124,9 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     const statusLabel = statusConfig[order.status as keyof typeof statusConfig]?.label || order.status;
     const statusColor = statusConfig[order.status as keyof typeof statusConfig]?.color || "text-gray-600";
 
-    const PaymentIcon = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.icon || CreditCard;
-    const paymentLabel = paymentMethodConfig[order.paymentMethod as keyof typeof paymentMethodConfig]?.label || order.paymentMethod;
+    const paymentMethod = order.payment?.method;
+    const PaymentIcon = paymentMethod ? (paymentMethodConfig[paymentMethod]?.icon || CreditCard) : Clock;
+    const paymentLabel = paymentMethod ? (paymentMethodConfig[paymentMethod]?.label || paymentMethod) : "Pagamento não iniciado";
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -234,11 +235,14 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {/* Mocked Address since backend might not return it in detail yet or type is missing */}
-                                    {/* Assuming backend returns shipping info or we just show a placeholder if missing */}
                                     <p className="text-gray-600">
-                                        Endereço cadastrado no checkout.
+                                        {order.address.street}, {order.address.number}
+                                        {order.address.complement ? ` - ${order.address.complement}` : ''}
                                     </p>
+                                    <p className="text-gray-600">
+                                        {order.address.neighborhood} - {order.address.city}/{order.address.state}
+                                    </p>
+                                    <p className="text-gray-600">CEP: {order.address.zipCode}</p>
                                 </CardContent>
                             </Card>
 
@@ -251,9 +255,11 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                                 </CardHeader>
                                 <CardContent>
                                     <p className="font-medium">{paymentLabel}</p>
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        Status: {statusLabel}
-                                    </p>
+                                    {order.payment && (
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            Status do pagamento: {order.payment.status}
+                                        </p>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>

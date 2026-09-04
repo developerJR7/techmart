@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Printer, MapPin, Check } from "lucide-react";
+import { ArrowLeft, Download, Printer, Check } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { ordersService } from "@/services/orders.service";
 import { useToast } from "@/hooks/use-toast";
+import { AddressSelector } from "@/components/checkout/address-selector";
 
 export default function BoletoPaymentPage() {
-    const { items, getTotal, clearCart, couponCode } = useCartStore();
+    const { items, getTotal, clearCart } = useCartStore();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [orderCreated, setOrderCreated] = useState(false);
@@ -16,15 +17,7 @@ export default function BoletoPaymentPage() {
     const [boletoUrl, setBoletoUrl] = useState("");
     const [boletoCode, setBoletoCode] = useState("");
 
-    const [address, setAddress] = useState({
-        street: '',
-        number: '',
-        neighborhood: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        complement: ''
-    });
+    const [addressId, setAddressId] = useState<string | null>(null);
 
     const total = getTotal();
     const shipping = total > 200 ? 0 : 15;
@@ -32,14 +25,23 @@ export default function BoletoPaymentPage() {
 
     const handleCreateOrder = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!addressId) {
+            toast({
+                variant: "error",
+                title: "Selecione um endereço",
+                description: "Escolha ou cadastre um endereço de entrega para continuar."
+            });
+            return;
+        }
+
         setLoading(true);
 
         try {
             await ordersService.createOrder({
                 items: items.map(item => ({ productId: item.id, quantity: item.quantity })),
-                shippingAddress: address,
-                paymentMethod: 'BOLETO',
-                couponCode: couponCode || undefined
+                addressId,
+                shippingCost: shipping,
             });
 
             // Mock Boleto creation
@@ -67,10 +69,6 @@ export default function BoletoPaymentPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatZipCode = (value: string) => {
-        return value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').slice(0, 9);
     };
 
     if (orderCreated) {
@@ -205,104 +203,18 @@ export default function BoletoPaymentPage() {
                     </p>
 
                     <form onSubmit={handleCreateOrder}>
-                        {/* Address Section */}
-                        <div style={{ marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <MapPin size={20} /> Endereço de Entrega
-                            </h2>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>CEP</label>
-                                    <input
-                                        type="text"
-                                        value={address.zipCode}
-                                        onChange={(e) => setAddress({ ...address, zipCode: formatZipCode(e.target.value) })}
-                                        placeholder="00000-000"
-                                        required
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Estado (UF)</label>
-                                    <input
-                                        type="text"
-                                        value={address.state}
-                                        onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase().slice(0, 2) })}
-                                        placeholder="SP"
-                                        required
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Cidade</label>
-                                <input
-                                    type="text"
-                                    value={address.city}
-                                    onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                                    required
-                                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Rua</label>
-                                    <input
-                                        type="text"
-                                        value={address.street}
-                                        onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                                        required
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Número</label>
-                                    <input
-                                        type="text"
-                                        value={address.number}
-                                        onChange={(e) => setAddress({ ...address, number: e.target.value })}
-                                        required
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Bairro</label>
-                                    <input
-                                        type="text"
-                                        value={address.neighborhood}
-                                        onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })}
-                                        required
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '5px' }}>Complemento</label>
-                                    <input
-                                        type="text"
-                                        value={address.complement}
-                                        onChange={(e) => setAddress({ ...address, complement: e.target.value })}
-                                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        <AddressSelector onAddressSelected={setAddressId} />
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || !addressId}
                             style={{
                                 width: '100%',
-                                backgroundColor: loading ? '#ddd' : '#ffd814',
-                                border: loading ? '1px solid #ccc' : '1px solid #fcd200',
+                                backgroundColor: (loading || !addressId) ? '#ddd' : '#ffd814',
+                                border: (loading || !addressId) ? '1px solid #ccc' : '1px solid #fcd200',
                                 borderRadius: '8px',
                                 padding: '15px',
-                                cursor: loading ? 'not-allowed' : 'pointer',
+                                cursor: (loading || !addressId) ? 'not-allowed' : 'pointer',
                                 fontSize: '16px',
                                 fontWeight: '500'
                             }}

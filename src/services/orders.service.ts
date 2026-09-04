@@ -21,19 +21,14 @@ function normalizeOrder(raw: Order): Order {
     };
 }
 
+// Contrato real de POST /orders (backend/src/modules/orders/dto/create-order.dto.ts):
+// addressId de um endereço já existente do usuário, os itens e o frete.
+// Método de pagamento não entra aqui — ele só importa na chamada seguinte,
+// a /payments/checkout ou /payments/pix, feita depois que o pedido existe.
 export interface CreateOrderData {
     items: { productId: string; quantity: number }[];
-    shippingAddress: {
-        street: string;
-        number: string;
-        city: string;
-        state: string;
-        zipCode: string;
-        complement?: string;
-        neighborhood: string;
-    };
-    paymentMethod: 'PIX' | 'BOLETO' | 'CREDIT_CARD';
-    couponCode?: string;
+    addressId: string;
+    shippingCost: number;
 }
 
 export const ordersService = {
